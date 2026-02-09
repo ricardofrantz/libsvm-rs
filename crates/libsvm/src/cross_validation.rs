@@ -91,15 +91,15 @@ pub fn svm_cross_validation(
 
         // Compute fold sizes
         let mut fold_count = vec![0usize; nr_fold];
-        for i in 0..nr_fold {
-            for c in 0..nr_class {
-                fold_count[i] += ((i + 1) * count[c]) / nr_fold - (i * count[c]) / nr_fold;
+        for (i, fc) in fold_count.iter_mut().enumerate() {
+            for &cnt in &count {
+                *fc += ((i + 1) * cnt) / nr_fold - (i * cnt) / nr_fold;
             }
         }
 
         fold_start[0] = 0;
-        for i in 1..=nr_fold {
-            fold_start[i] = fold_start[i - 1] + fold_count[i - 1];
+        for i in 0..nr_fold {
+            fold_start[i + 1] = fold_start[i] + fold_count[i];
         }
 
         // Distribute samples to folds, preserving class balance
@@ -110,8 +110,8 @@ pub fn svm_cross_validation(
             for i in 0..nr_fold {
                 let begin = start[c] + (i * count[c]) / nr_fold;
                 let end = start[c] + ((i + 1) * count[c]) / nr_fold;
-                for j in begin..end {
-                    perm[fold_start[i] + offset[i]] = index[j];
+                for &idx in &index[begin..end] {
+                    perm[fold_start[i] + offset[i]] = idx;
                     offset[i] += 1;
                 }
             }
@@ -119,8 +119,8 @@ pub fn svm_cross_validation(
 
         // Rebuild fold_start from fold_count
         fold_start[0] = 0;
-        for i in 1..=nr_fold {
-            fold_start[i] = fold_start[i - 1] + fold_count[i - 1];
+        for i in 0..nr_fold {
+            fold_start[i + 1] = fold_start[i] + fold_count[i];
         }
     } else {
         // Simple random shuffle
@@ -128,8 +128,8 @@ pub fn svm_cross_validation(
             let j = i + rng_next(&mut rng) % (l - i);
             perm.swap(i, j);
         }
-        for i in 0..=nr_fold {
-            fold_start[i] = i * l / nr_fold;
+        for (i, fs) in fold_start.iter_mut().enumerate() {
+            *fs = i * l / nr_fold;
         }
     }
 
@@ -145,13 +145,13 @@ pub fn svm_cross_validation(
         let mut sub_labels = Vec::with_capacity(sub_l);
         let mut sub_instances = Vec::with_capacity(sub_l);
 
-        for j in 0..begin {
-            sub_labels.push(prob.labels[perm[j]]);
-            sub_instances.push(prob.instances[perm[j]].clone());
+        for &pi in &perm[..begin] {
+            sub_labels.push(prob.labels[pi]);
+            sub_instances.push(prob.instances[pi].clone());
         }
-        for j in end..l {
-            sub_labels.push(prob.labels[perm[j]]);
-            sub_instances.push(prob.instances[perm[j]].clone());
+        for &pi in &perm[end..l] {
+            sub_labels.push(prob.labels[pi]);
+            sub_instances.push(prob.instances[pi].clone());
         }
 
         let subprob = SvmProblem {
@@ -172,6 +172,7 @@ pub fn svm_cross_validation(
 // ─── Internal helpers ────────────────────────────────────────────────
 
 /// Group samples by class label (same logic as `train::svm_group_classes`).
+#[allow(clippy::needless_range_loop)]
 fn group_classes(labels: &[f64]) -> (Vec<i32>, Vec<usize>, Vec<usize>, Vec<usize>) {
     let l = labels.len();
     let mut label_list: Vec<i32> = Vec::new();

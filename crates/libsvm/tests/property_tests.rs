@@ -20,7 +20,7 @@ fn load_heart_scale() -> SvmProblem {
 
 /// Helper to extract unique labels from a problem.
 fn unique_labels(prob: &SvmProblem) -> Vec<f64> {
-    let mut labels: Vec<f64> = prob.labels.iter().copied().collect();
+    let mut labels: Vec<f64> = prob.labels.to_vec();
     labels.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     labels.dedup();
     labels
@@ -63,10 +63,12 @@ fn kernel_deterministic() {
         instances,
     };
 
-    let mut param = SvmParameter::default();
-    param.gamma = 1.0 / 20.0; // max index is 20
-    param.shrinking = false;
-    param.eps = 0.01;
+    let param = SvmParameter {
+        gamma: 1.0 / 20.0, // max index is 20
+        shrinking: false,
+        eps: 0.01,
+        ..Default::default()
+    };
 
     // Train the model
     let model = svm_train(&prob, &param);
@@ -92,8 +94,10 @@ fn predict_deterministic() {
     libsvm_rs::set_quiet(true);
 
     let prob = load_heart_scale();
-    let mut param = SvmParameter::default();
-    param.gamma = 1.0 / 13.0;
+    let param = SvmParameter {
+        gamma: 1.0 / 13.0,
+        ..Default::default()
+    };
 
     // Train the model
     let model = svm_train(&prob, &param);
@@ -124,8 +128,10 @@ fn train_predict_labels_in_range() {
     let prob = load_heart_scale();
     let valid_labels = unique_labels(&prob);
 
-    let mut param = SvmParameter::default();
-    param.gamma = 1.0 / 13.0;
+    let param = SvmParameter {
+        gamma: 1.0 / 13.0,
+        ..Default::default()
+    };
     let model = svm_train(&prob, &param);
 
     // Predict all instances and verify each is a valid label
@@ -153,8 +159,10 @@ fn cross_validation_results_valid() {
     let prob = load_heart_scale();
     let valid_labels = unique_labels(&prob);
 
-    let mut param = SvmParameter::default();
-    param.gamma = 1.0 / 13.0;
+    let param = SvmParameter {
+        gamma: 1.0 / 13.0,
+        ..Default::default()
+    };
     let cv_targets = svm_cross_validation(&prob, &param, 5);
 
     // Verify all CV targets are valid

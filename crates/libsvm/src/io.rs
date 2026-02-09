@@ -636,6 +636,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::excessive_precision)]
     fn load_c_trained_model() {
         // Load a model produced by the original C LIBSVM svm-train
         let path = data_dir().join("heart_scale.model");
@@ -680,6 +681,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::excessive_precision)]
     fn gfmt_matches_c_printf() {
         // Reference values from C's printf("%.17g|%.8g\n", v, v)
         let cases: &[(f64, &str, &str)] = &[
@@ -706,6 +708,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::excessive_precision)]
     fn model_roundtrip() {
         // Create a minimal model and verify save → load roundtrip
         let model = SvmModel {

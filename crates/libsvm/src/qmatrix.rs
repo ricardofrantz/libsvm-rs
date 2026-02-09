@@ -50,6 +50,7 @@ impl<'a> SvcQ<'a> {
     }
 }
 
+#[allow(clippy::needless_range_loop)]
 impl<'a> QMatrix for SvcQ<'a> {
     fn get_q(&mut self, i: usize, len: usize) -> &[Qfloat] {
         let (data, start) = self.cache.get_data(i, len);
@@ -96,6 +97,7 @@ impl<'a> OneClassQ<'a> {
     }
 }
 
+#[allow(clippy::needless_range_loop)]
 impl<'a> QMatrix for OneClassQ<'a> {
     fn get_q(&mut self, i: usize, len: usize) -> &[Qfloat] {
         let (data, start) = self.cache.get_data(i, len);
@@ -177,6 +179,7 @@ impl<'a> SvrQ<'a> {
     }
 }
 
+#[allow(clippy::needless_range_loop)]
 impl<'a> QMatrix for SvrQ<'a> {
     fn get_q(&mut self, i: usize, len: usize) -> &[Qfloat] {
         let real_i = self.index[i];
@@ -246,6 +249,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::needless_range_loop)]
     fn svc_q_symmetry_and_sign() {
         let data = vec![
             make_nodes(&[(1, 1.0)]),
@@ -261,9 +265,7 @@ mod tests {
         let mut matrix = vec![vec![0.0f32; l]; l];
         for i in 0..l {
             let row = q.get_q(i, l).to_vec();
-            for j in 0..l {
-                matrix[i][j] = row[j];
-            }
+            matrix[i][..l].copy_from_slice(&row[..l]);
         }
 
         // Check symmetry

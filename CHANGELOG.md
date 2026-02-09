@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-02-09
+
+### Fixed
+
+- Model loading: harden against oversized header counts that could cause memory allocation failures
+- Cross-validation: fix probability prediction output and zero-fold edge case (now clamps to leave-one-out)
+- Code quality: resolve 43 clippy warnings (collapsible_else_if, needless_range_loop, excessive_precision, field_reassign_with_default, manual_memcpy, etc.)
+
 ## [0.5.0] - 2026-02-09
 
 ### Added
@@ -74,7 +82,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Parameter validation with ν-SVC feasibility check
 - 38 tests
 
-[Unreleased]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.2.0...v0.3.0

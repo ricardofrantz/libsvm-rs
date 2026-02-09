@@ -156,6 +156,7 @@ pub fn sigmoid_predict(decision_value: f64, a: f64, b: f64) -> f64 {
 /// probabilities using the Wu-Lin-Weng iterative method.
 ///
 /// Matches LIBSVM's `multiclass_probability`.
+#[allow(clippy::needless_range_loop)]
 pub fn multiclass_probability(k: usize, r: &[Vec<f64>], p: &mut [f64]) {
     let max_iter = 100.max(k);
     let eps = 0.005 / k as f64;
@@ -250,13 +251,13 @@ pub fn svm_binary_svc_probability(
         let mut sub_instances = Vec::with_capacity(l - (end - begin));
         let mut sub_labels = Vec::with_capacity(l - (end - begin));
 
-        for j in 0..begin {
-            sub_instances.push(prob.instances[perm[j]].clone());
-            sub_labels.push(prob.labels[perm[j]]);
+        for &pi in &perm[..begin] {
+            sub_instances.push(prob.instances[pi].clone());
+            sub_labels.push(prob.labels[pi]);
         }
-        for j in end..l {
-            sub_instances.push(prob.instances[perm[j]].clone());
-            sub_labels.push(prob.labels[perm[j]]);
+        for &pi in &perm[end..l] {
+            sub_instances.push(prob.instances[pi].clone());
+            sub_labels.push(prob.labels[pi]);
         }
 
         // Count classes in training set
@@ -320,8 +321,8 @@ pub fn predict_one_class_probability(prob_density_marks: &[f64], dec_value: f64)
         return 0.999;
     }
 
-    for i in 1..nr_marks {
-        if dec_value < prob_density_marks[i] {
+    for (i, &mark) in prob_density_marks.iter().enumerate().skip(1).take(nr_marks - 1) {
+        if dec_value < mark {
             return i as f64 / nr_marks as f64;
         }
     }
@@ -343,18 +344,18 @@ pub fn svm_one_class_probability(
     let l = prob.labels.len();
     let mut dec_values = vec![0.0; l];
 
-    for (i, instance) in prob.instances.iter().enumerate() {
+    for (dv_slot, instance) in dec_values.iter_mut().zip(prob.instances.iter()) {
         let mut dv = [0.0];
         predict_values(model, instance, &mut dv);
-        dec_values[i] = dv[0];
+        *dv_slot = dv[0];
     }
 
     dec_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
     // Find first index with dec_value >= 0  (= neg_counter in C++)
     let mut neg_counter = 0usize;
-    for i in 0..l {
-        if dec_values[i] >= 0.0 {
+    for (i, &dv) in dec_values.iter().enumerate() {
+        if dv >= 0.0 {
             neg_counter = i;
             break;
         }
@@ -411,8 +412,8 @@ pub fn svm_svr_probability(prob: &SvmProblem, param: &SvmParameter) -> f64 {
     // Compute residuals and initial MAE
     let mut ymv_residuals: Vec<f64> = Vec::with_capacity(l);
     let mut mae = 0.0;
-    for i in 0..l {
-        let r = prob.labels[i] - ymv[i];
+    for (&label, &pred) in prob.labels.iter().zip(ymv.iter()) {
+        let r = label - pred;
         ymv_residuals.push(r);
         mae += r.abs();
     }
@@ -422,11 +423,11 @@ pub fn svm_svr_probability(prob: &SvmProblem, param: &SvmParameter) -> f64 {
     let std_val = (2.0 * mae * mae).sqrt();
     let mut count = 0usize;
     mae = 0.0;
-    for i in 0..l {
-        if ymv_residuals[i].abs() > 5.0 * std_val {
+    for &residual in &ymv_residuals {
+        if residual.abs() > 5.0 * std_val {
             count += 1;
         } else {
-            mae += ymv_residuals[i].abs();
+            mae += residual.abs();
         }
     }
     mae /= (l - count) as f64;

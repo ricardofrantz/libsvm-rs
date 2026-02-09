@@ -127,6 +127,7 @@ pub fn predict(model: &SvmModel, x: &[SvmNode]) -> f64 {
 /// - **SVR**: probability prediction is not supported (returns `None`).
 ///
 /// Matches LIBSVM's `svm_predict_probability`.
+#[allow(clippy::needless_range_loop)]
 pub fn predict_probability(model: &SvmModel, x: &[SvmNode]) -> Option<(f64, Vec<f64>)> {
     match model.param.svm_type {
         SvmType::CSvc | SvmType::NuSvc

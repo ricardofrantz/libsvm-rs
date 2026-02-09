@@ -13,10 +13,12 @@ fn load_heart_scale() -> libsvm_rs::SvmProblem {
 fn bench_train_rbf(c: &mut Criterion) {
     libsvm_rs::set_quiet(true);
     let problem = load_heart_scale();
-    let mut param = SvmParameter::default();
-    param.svm_type = SvmType::CSvc;
-    param.kernel_type = KernelType::Rbf;
-    param.gamma = 1.0 / 13.0;
+    let param = SvmParameter {
+        svm_type: SvmType::CSvc,
+        kernel_type: KernelType::Rbf,
+        gamma: 1.0 / 13.0,
+        ..Default::default()
+    };
 
     c.bench_function("train_rbf", |b| {
         b.iter(|| svm_train(black_box(&problem), black_box(&param)))
@@ -26,9 +28,11 @@ fn bench_train_rbf(c: &mut Criterion) {
 fn bench_train_linear(c: &mut Criterion) {
     libsvm_rs::set_quiet(true);
     let problem = load_heart_scale();
-    let mut param = SvmParameter::default();
-    param.svm_type = SvmType::CSvc;
-    param.kernel_type = KernelType::Linear;
+    let param = SvmParameter {
+        svm_type: SvmType::CSvc,
+        kernel_type: KernelType::Linear,
+        ..Default::default()
+    };
 
     c.bench_function("train_linear", |b| {
         b.iter(|| svm_train(black_box(&problem), black_box(&param)))
@@ -38,8 +42,10 @@ fn bench_train_linear(c: &mut Criterion) {
 fn bench_predict(c: &mut Criterion) {
     libsvm_rs::set_quiet(true);
     let problem = load_heart_scale();
-    let mut param = SvmParameter::default();
-    param.gamma = 1.0 / 13.0;
+    let param = SvmParameter {
+        gamma: 1.0 / 13.0,
+        ..Default::default()
+    };
     let model = svm_train(&problem, &param);
 
     c.bench_function("predict_all", |b| {
@@ -54,9 +60,11 @@ fn bench_predict(c: &mut Criterion) {
 fn bench_train_with_probability(c: &mut Criterion) {
     libsvm_rs::set_quiet(true);
     let problem = load_heart_scale();
-    let mut param = SvmParameter::default();
-    param.gamma = 1.0 / 13.0;
-    param.probability = true;
+    let param = SvmParameter {
+        gamma: 1.0 / 13.0,
+        probability: true,
+        ..Default::default()
+    };
 
     c.bench_function("train_with_probability", |b| {
         b.iter(|| svm_train(black_box(&problem), black_box(&param)))

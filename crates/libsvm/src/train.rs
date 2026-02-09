@@ -94,8 +94,8 @@ fn solve_one_class(
     // Initialize alpha: first n=floor(nu*l) at 1, fractional remainder, rest 0
     let n = (param.nu * l as f64) as usize;
     let mut alpha = vec![0.0; l];
-    for i in 0..n.min(l) {
-        alpha[i] = 1.0;
+    for a in alpha.iter_mut().take(n.min(l)) {
+        *a = 1.0;
     }
     if n < l {
         alpha[n] = param.nu * l as f64 - n as f64;
@@ -232,6 +232,7 @@ struct GroupInfo {
 }
 
 /// Group samples by class label. Matches LIBSVM's `svm_group_classes`.
+#[allow(clippy::needless_range_loop)]
 fn svm_group_classes(labels: &[f64]) -> GroupInfo {
     let l = labels.len();
     let mut label_list: Vec<i32> = Vec::new();

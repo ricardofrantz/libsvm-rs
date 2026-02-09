@@ -59,6 +59,7 @@ pub struct Solver<'a> {
     eps: f64,
 }
 
+#[allow(clippy::needless_range_loop)]
 impl<'a> Solver<'a> {
     /// Run the SMO solver.
     ///
@@ -72,6 +73,7 @@ impl<'a> Solver<'a> {
     /// * `cp`, `cn` — box constraints for positive/negative classes
     /// * `eps` — stopping tolerance
     /// * `shrinking` — whether to use the shrinking heuristic
+    #[allow(clippy::too_many_arguments)]
     pub fn solve(
         variant: SolverVariant,
         l: usize,
@@ -330,11 +332,9 @@ impl<'a> Solver<'a> {
                     gmax = -self.g[t];
                     gmax_idx = Some(t);
                 }
-            } else {
-                if !self.is_lower_bound(t) && self.g[t] >= gmax {
-                    gmax = self.g[t];
-                    gmax_idx = Some(t);
-                }
+            } else if !self.is_lower_bound(t) && self.g[t] >= gmax {
+                gmax = self.g[t];
+                gmax_idx = Some(t);
             }
         }
 
@@ -363,24 +363,22 @@ impl<'a> Solver<'a> {
                         }
                     }
                 }
-            } else {
-                if !self.is_upper_bound(j) {
-                    let grad_diff = gmax - self.g[j];
-                    if -self.g[j] >= gmax2 {
-                        gmax2 = -self.g[j];
-                    }
-                    if grad_diff > 0.0 {
-                        let quad_coef = self.qd[i] + self.qd[j]
-                            + 2.0 * (self.y[i] as f64) * q_i[j] as f64;
-                        let obj_diff = if quad_coef > 0.0 {
-                            -(grad_diff * grad_diff) / quad_coef
-                        } else {
-                            -(grad_diff * grad_diff) / TAU
-                        };
-                        if obj_diff <= obj_diff_min {
-                            gmin_idx = Some(j);
-                            obj_diff_min = obj_diff;
-                        }
+            } else if !self.is_upper_bound(j) {
+                let grad_diff = gmax - self.g[j];
+                if -self.g[j] >= gmax2 {
+                    gmax2 = -self.g[j];
+                }
+                if grad_diff > 0.0 {
+                    let quad_coef = self.qd[i] + self.qd[j]
+                        + 2.0 * (self.y[i] as f64) * q_i[j] as f64;
+                    let obj_diff = if quad_coef > 0.0 {
+                        -(grad_diff * grad_diff) / quad_coef
+                    } else {
+                        -(grad_diff * grad_diff) / TAU
+                    };
+                    if obj_diff <= obj_diff_min {
+                        gmin_idx = Some(j);
+                        obj_diff_min = obj_diff;
                     }
                 }
             }
@@ -409,11 +407,9 @@ impl<'a> Solver<'a> {
                     gmaxp = -self.g[t];
                     gmaxp_idx = Some(t);
                 }
-            } else {
-                if !self.is_lower_bound(t) && self.g[t] >= gmaxn {
-                    gmaxn = self.g[t];
-                    gmaxn_idx = Some(t);
-                }
+            } else if !self.is_lower_bound(t) && self.g[t] >= gmaxn {
+                gmaxn = self.g[t];
+                gmaxn_idx = Some(t);
             }
         }
 
@@ -453,24 +449,22 @@ impl<'a> Solver<'a> {
                         }
                     }
                 }
-            } else {
-                if !self.is_upper_bound(j) {
-                    let grad_diff = gmaxn - self.g[j];
-                    if -self.g[j] >= gmaxn2 {
-                        gmaxn2 = -self.g[j];
-                    }
-                    if grad_diff > 0.0 {
-                        if let (Some(in_), Some(ref q_in)) = (in_, &q_in) {
-                            let quad_coef = self.qd[in_] + self.qd[j] - 2.0 * q_in[j] as f64;
-                            let obj_diff = if quad_coef > 0.0 {
-                                -(grad_diff * grad_diff) / quad_coef
-                            } else {
-                                -(grad_diff * grad_diff) / TAU
-                            };
-                            if obj_diff <= obj_diff_min {
-                                gmin_idx = Some(j);
-                                obj_diff_min = obj_diff;
-                            }
+            } else if !self.is_upper_bound(j) {
+                let grad_diff = gmaxn - self.g[j];
+                if -self.g[j] >= gmaxn2 {
+                    gmaxn2 = -self.g[j];
+                }
+                if grad_diff > 0.0 {
+                    if let (Some(in_), Some(ref q_in)) = (in_, &q_in) {
+                        let quad_coef = self.qd[in_] + self.qd[j] - 2.0 * q_in[j] as f64;
+                        let obj_diff = if quad_coef > 0.0 {
+                            -(grad_diff * grad_diff) / quad_coef
+                        } else {
+                            -(grad_diff * grad_diff) / TAU
+                        };
+                        if obj_diff <= obj_diff_min {
+                            gmin_idx = Some(j);
+                            obj_diff_min = obj_diff;
                         }
                     }
                 }
@@ -519,22 +513,18 @@ impl<'a> Solver<'a> {
                     self.alpha[j] = 0.0;
                     self.alpha[i] = diff;
                 }
-            } else {
-                if self.alpha[i] < 0.0 {
-                    self.alpha[i] = 0.0;
-                    self.alpha[j] = -diff;
-                }
+            } else if self.alpha[i] < 0.0 {
+                self.alpha[i] = 0.0;
+                self.alpha[j] = -diff;
             }
             if diff > c_i - c_j {
                 if self.alpha[i] > c_i {
                     self.alpha[i] = c_i;
                     self.alpha[j] = c_i - diff;
                 }
-            } else {
-                if self.alpha[j] > c_j {
-                    self.alpha[j] = c_j;
-                    self.alpha[i] = c_j + diff;
-                }
+            } else if self.alpha[j] > c_j {
+                self.alpha[j] = c_j;
+                self.alpha[i] = c_j + diff;
             }
         } else {
             let mut quad_coef = self.qd[i] + self.qd[j] - 2.0 * q_i[j] as f64;
@@ -551,22 +541,18 @@ impl<'a> Solver<'a> {
                     self.alpha[i] = c_i;
                     self.alpha[j] = sum - c_i;
                 }
-            } else {
-                if self.alpha[j] < 0.0 {
-                    self.alpha[j] = 0.0;
-                    self.alpha[i] = sum;
-                }
+            } else if self.alpha[j] < 0.0 {
+                self.alpha[j] = 0.0;
+                self.alpha[i] = sum;
             }
             if sum > c_j {
                 if self.alpha[j] > c_j {
                     self.alpha[j] = c_j;
                     self.alpha[i] = sum - c_j;
                 }
-            } else {
-                if self.alpha[i] < 0.0 {
-                    self.alpha[i] = 0.0;
-                    self.alpha[j] = sum;
-                }
+            } else if self.alpha[i] < 0.0 {
+                self.alpha[i] = 0.0;
+                self.alpha[j] = sum;
             }
         }
 
@@ -712,16 +698,12 @@ impl<'a> Solver<'a> {
             if !self.is_upper_bound(i) {
                 if self.y[i] == 1 {
                     if -self.g[i] > gmax1 { gmax1 = -self.g[i]; }
-                } else {
-                    if -self.g[i] > gmax4 { gmax4 = -self.g[i]; }
-                }
+                } else if -self.g[i] > gmax4 { gmax4 = -self.g[i]; }
             }
             if !self.is_lower_bound(i) {
                 if self.y[i] == 1 {
                     if self.g[i] > gmax2 { gmax2 = self.g[i]; }
-                } else {
-                    if self.g[i] > gmax3 { gmax3 = self.g[i]; }
-                }
+                } else if self.g[i] > gmax3 { gmax3 = self.g[i]; }
             }
         }
 
@@ -810,15 +792,13 @@ impl<'a> Solver<'a> {
                     nr_free1 += 1;
                     sum_free1 += self.g[i];
                 }
+            } else if self.is_upper_bound(i) {
+                lb2 = lb2.max(self.g[i]);
+            } else if self.is_lower_bound(i) {
+                ub2 = ub2.min(self.g[i]);
             } else {
-                if self.is_upper_bound(i) {
-                    lb2 = lb2.max(self.g[i]);
-                } else if self.is_lower_bound(i) {
-                    ub2 = ub2.min(self.g[i]);
-                } else {
-                    nr_free2 += 1;
-                    sum_free2 += self.g[i];
-                }
+                nr_free2 += 1;
+                sum_free2 += self.g[i];
             }
         }
 
