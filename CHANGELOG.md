@@ -1,61 +1,61 @@
 # Changelog
 
-All notable changes to libsvm-rs are documented in this file.
+All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/),
+and this project adheres to [Semantic Versioning](https://semver.org/).
+
+## [Unreleased]
 
 ## [0.4.0] - 2026-02-09
 
 ### Added
-- **Probability estimates**: Sigmoid probability model training and prediction (one-vs-rest multiclass)
-- **Cross-validation**: k-fold cross-validation with stratified splits for classification
-- `probability` module: `SigmoidTrainer`, `sigmoid_predict`, multiclass probability calibration
-- `cross_validation` module: `StratifiedKFold` with proper class distribution preservation
+
+- Probability estimates: Sigmoid probability model training and prediction
+- Cross-validation: k-fold cross-validation with stratified splits
+- `probability` module: `SigmoidTrainer`, `sigmoid_predict`, multiclass calibration
+- `cross_validation` module: `StratifiedKFold` for proper class distribution
 - 20 new unit tests covering probability and CV workflows
 
 ### Changed
+
 - `SvmModel::predict_probability_multiclass()` now uses trained sigmoid probabilities
-- Solver output now returns `alpha_sum` for probability fitting (one-vs-rest framework)
+- Solver returns `alpha_sum` for probability fitting (one-vs-rest framework)
 
 ### Fixed
+
 - Multiclass probability predictions now sum correctly to 1.0
 
-## [0.3.0] - 2026-01-31
+## [0.3.0] - 2026-02-09
 
 ### Added
-- **SMO solver**: Complete Sequential Minimal Optimization implementation (Standard + Nu variants)
-- **QMatrix trait**: Dynamic dispatch for SVC, ONE_CLASS, SVR kernel matrix computations
-- Training on all 5 SVM problem types: C-SVC, NU-SVC, ONE-CLASS, EPSILON-SVR, NU-SVR
-- Shrinking heuristic for solver efficiency
-- Working set selection strategy 3 (WSS3)
-- 40 unit tests for solver, kernels, and all SVM problem types
-- `svm_train()`, `svm_train_one()`, `solve_c_svc()`, `solve_one_class()`, `solve_svr()` dispatchers
-- Full numerical equivalence with C LIBSVM (within 1e-8 tolerance)
 
-## [0.2.0] - 2025-12-15
-
-### Added
-- **Prediction module**: Inference on trained SVM models
-- `SvmModel::predict()`: Point predictions (classifier + regressor)
-- `SvmModel::predict_values()`: Decision function values
-- `SvmModel::predict_probability_binary()`: Binary classification probabilities
-- `SvmModel::predict_probability_multiclass()`: Multiclass probabilities (placeholder)
-- Cache-friendly kernel evaluation during prediction
-- 15 unit tests for prediction workflows
+- Full SMO solver for all 5 SVM types: C-SVC, ν-SVC, one-class, ε-SVR, ν-SVR
+- WSS3 working-set selection (second-order heuristic, Fan et al. JMLR 2005)
+- Shrinking heuristic with gradient reconstruction
+- `QMatrix` trait with `SvcQ`, `OneClassQ`, `SvrQ` implementations
+- `svm_train` function producing `SvmModel` compatible with C LIBSVM
+- Multiclass support via one-vs-one with class grouping and sv_coef assembly
+- 50 tests (12 new), verified against C LIBSVM reference outputs
 
 ### Fixed
-- Decision function computation for multi-class models
 
-## [0.1.0] - 2025-11-30
+- `Cache::swap_index` — added column swap loop (critical for shrinking correctness)
+- Kernel refactored to `Vec<&[SvmNode]>` for swappable data point references
+
+## [0.2.0] - 2026-02-09
 
 ### Added
-- **Core types**: `SvmParameter`, `SvmProblem`, `SvmModel`, `SvmNode`
-- **I/O module**: LIBSVM format parsing and model serialization
-- **Kernel implementations**: Linear, RBF, Polynomial, Sigmoid with parameter validation
-- **Cache module**: LRU cache for kernel matrix with row swapping support
-- Workspace setup with multi-crate layout (`crates/libsvm`, `bins/*`)
-- CI/CD pipeline with GitHub Actions
-- Comprehensive test suite (25+ unit tests)
-- Support for reading heart_scale, iris.scale, housing datasets
-- Model interchange with C LIBSVM (load trained C models, save for C tools)
+
+- Core types: `SvmNode`, `SvmProblem`, `SvmParameter`, `SvmModel`
+- All 5 kernel functions (linear, polynomial, RBF, sigmoid, precomputed)
+- LRU kernel cache
+- Model and problem I/O (LIBSVM text format, byte-exact roundtrip)
+- Prediction (zero mismatches against C `svm-predict` on heart_scale)
+- Parameter validation with ν-SVC feasibility check
+- 38 tests
+
+[Unreleased]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/ricardofrantz/libsvm-rs/commits/v0.2.0
