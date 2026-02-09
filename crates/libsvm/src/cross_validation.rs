@@ -4,9 +4,9 @@
 //! random-split cross-validation for regression/one-class problems.
 //! Matches LIBSVM's `svm_cross_validation` (svm.cpp:2437–2556).
 
-use crate::predict::predict;
+use crate::predict::{predict, predict_probability};
 use crate::train::svm_train;
-use crate::types::{SvmParameter, SvmProblem, SvmType};
+use crate::types::{SvmModel, SvmNode, SvmParameter, SvmProblem, SvmType};
 
 // ─── RNG helper ──────────────────────────────────────────────────────
 
@@ -15,6 +15,16 @@ fn rng_next(state: &mut u64) -> usize {
         .wrapping_mul(6364136223846793005)
         .wrapping_add(1442695040888963407);
     (*state >> 33) as usize
+}
+
+fn predict_cv_target(model: &SvmModel, param: &SvmParameter, x: &[SvmNode]) -> f64 {
+    if param.probability && matches!(param.svm_type, SvmType::CSvc | SvmType::NuSvc) {
+        predict_probability(model, x)
+            .map(|(label, _)| label)
+            .unwrap_or_else(|| predict(model, x))
+    } else {
+        predict(model, x)
+    }
 }
 
 // ─── Public API ──────────────────────────────────────────────────────
@@ -35,6 +45,18 @@ pub fn svm_cross_validation(
     mut nr_fold: usize,
 ) -> Vec<f64> {
     let l = prob.labels.len();
+
+    if l == 0 {
+        return Vec::new();
+    }
+
+    if nr_fold == 0 {
+        crate::info(
+            "WARNING: # folds (0) <= 0. Will use # folds = # data instead \
+             (i.e., leave-one-out cross validation)\n",
+        );
+        nr_fold = l;
+    }
 
     if nr_fold > l {
         crate::info(&format!(
@@ -140,7 +162,7 @@ pub fn svm_cross_validation(
 
         // Predict held-out
         for j in begin..end {
-            target[perm[j]] = predict(&submodel, &prob.instances[perm[j]]);
+            target[perm[j]] = predict_cv_target(&submodel, param, &prob.instances[perm[j]]);
         }
     }
 
@@ -201,7 +223,7 @@ fn group_classes(labels: &[f64]) -> (Vec<i32>, Vec<usize>, Vec<usize>, Vec<usize
 mod tests {
     use super::*;
     use crate::io::load_problem;
-    use crate::types::{KernelType, SvmNode};
+    use crate::types::{KernelType, SvmModel, SvmNode};
     use std::path::PathBuf;
 
     fn data_dir() -> PathBuf {
@@ -287,5 +309,95 @@ mod tests {
             / problem.labels.len() as f64;
         assert!(mse.is_finite(), "MSE is not finite");
         assert!(mse < 500.0, "MSE {} too high", mse);
+    }
+
+    #[test]
+    fn cross_validation_zero_folds_clamps_to_leave_one_out() {
+        let labels = vec![1.0, -1.0, 1.0, -1.0];
+        let instances: Vec<Vec<SvmNode>> = vec![
+            vec![SvmNode {
+                index: 1,
+                value: 1.0,
+            }],
+            vec![SvmNode {
+                index: 1,
+                value: -1.0,
+            }],
+            vec![SvmNode {
+                index: 1,
+                value: 0.8,
+            }],
+            vec![SvmNode {
+                index: 1,
+                value: -0.9,
+            }],
+        ];
+        let prob = SvmProblem { labels, instances };
+        let param = SvmParameter {
+            svm_type: SvmType::CSvc,
+            kernel_type: KernelType::Linear,
+            c: 1.0,
+            eps: 0.001,
+            ..Default::default()
+        };
+
+        let target = svm_cross_validation(&prob, &param, 0);
+        assert_eq!(target.len(), prob.labels.len());
+        for &pred in &target {
+            assert!(pred == 1.0 || pred == -1.0);
+        }
+    }
+
+    #[test]
+    fn cross_validation_empty_problem_returns_empty() {
+        let prob = SvmProblem {
+            labels: Vec::new(),
+            instances: Vec::new(),
+        };
+        let target = svm_cross_validation(&prob, &SvmParameter::default(), 5);
+        assert!(target.is_empty());
+    }
+
+    #[test]
+    fn predict_cv_target_uses_probability_label_for_classification() {
+        let param = SvmParameter {
+            svm_type: SvmType::CSvc,
+            kernel_type: KernelType::Linear,
+            probability: true,
+            ..Default::default()
+        };
+        let model = SvmModel {
+            param: param.clone(),
+            nr_class: 2,
+            sv: vec![
+                vec![SvmNode {
+                    index: 1,
+                    value: 1.0,
+                }],
+                vec![SvmNode {
+                    index: 1,
+                    value: 1.0,
+                }],
+            ],
+            sv_coef: vec![vec![1.0, -1.0]],
+            rho: vec![-1.0],
+            prob_a: vec![1.0],
+            prob_b: vec![0.0],
+            prob_density_marks: Vec::new(),
+            sv_indices: vec![1, 2],
+            label: vec![1, -1],
+            n_sv: vec![1, 1],
+        };
+        let x = vec![SvmNode {
+            index: 1,
+            value: 1.0,
+        }];
+
+        let vote_label = predict(&model, &x);
+        let (prob_label, _) = predict_probability(&model, &x).unwrap();
+
+        assert_eq!(vote_label, 1.0);
+        assert_eq!(prob_label, -1.0);
+        assert_eq!(predict_cv_target(&model, &param, &x), prob_label);
     }
 }
