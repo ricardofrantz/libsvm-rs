@@ -37,11 +37,11 @@ pub fn svm_cross_validation(
     let l = prob.labels.len();
 
     if nr_fold > l {
-        eprintln!(
+        crate::info(&format!(
             "WARNING: # folds ({}) > # data ({}). Will use # folds = # data instead \
-             (i.e., leave-one-out cross validation)",
+             (i.e., leave-one-out cross validation)\n",
             nr_fold, l
-        );
+        ));
         nr_fold = l;
     }
 

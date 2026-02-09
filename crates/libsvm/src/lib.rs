@@ -17,6 +17,23 @@
 //!
 //! - `rayon` — Enable parallel cross-validation (off by default).
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
+static QUIET_MODE: AtomicBool = AtomicBool::new(false);
+
+/// Enable or disable quiet mode. When quiet, solver diagnostic messages
+/// are suppressed (equivalent to LIBSVM's `-q` flag).
+pub fn set_quiet(quiet: bool) {
+    QUIET_MODE.store(quiet, Ordering::Relaxed);
+}
+
+/// Print an info message to stderr (suppressed in quiet mode).
+pub(crate) fn info(msg: &str) {
+    if !QUIET_MODE.load(Ordering::Relaxed) {
+        eprint!("{}", msg);
+    }
+}
+
 pub mod types;
 pub mod error;
 pub mod io;

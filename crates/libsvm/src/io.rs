@@ -95,6 +95,16 @@ fn fmt_8g(v: f64) -> Gfmt {
     Gfmt::new(v, 8)
 }
 
+/// Format a float like C's `%g` (6 significant digits).
+pub fn format_g(v: f64) -> String {
+    format!("{}", Gfmt::new(v, 6))
+}
+
+/// Format a float like C's `%.17g` (17 significant digits).
+pub fn format_17g(v: f64) -> String {
+    format!("{}", Gfmt::new(v, 17))
+}
+
 // ─── String tables matching original LIBSVM ──────────────────────────
 
 const SVM_TYPE_TABLE: &[&str] = &["c_svc", "nu_svc", "one_class", "epsilon_svr", "nu_svr"];

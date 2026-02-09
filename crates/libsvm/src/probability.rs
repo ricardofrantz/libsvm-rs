@@ -365,11 +365,11 @@ pub fn svm_one_class_probability(
     let mid = nr_marks / 2; // 5
 
     if neg_counter < mid || pos_counter < mid {
-        eprintln!(
+        crate::info(&format!(
             "WARNING: number of positive or negative decision values <{}; \
-             too few to do a probability estimation.",
+             too few to do a probability estimation.\n",
             mid
-        );
+        ));
         return None;
     }
 
@@ -431,11 +431,11 @@ pub fn svm_svr_probability(prob: &SvmProblem, param: &SvmParameter) -> f64 {
     }
     mae /= (l - count) as f64;
 
-    eprintln!(
+    crate::info(&format!(
         "Prob. model for test data: target value = predicted value + z,\n\
-         z: Laplace distribution e^(-|z|/sigma)/(2sigma),sigma= {}",
+         z: Laplace distribution e^(-|z|/sigma)/(2sigma),sigma= {:.6}\n",
         mae
-    );
+    ));
 
     mae
 }

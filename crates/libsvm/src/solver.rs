@@ -180,7 +180,7 @@ impl<'a> Solver<'a> {
                 solver.reconstruct_gradient();
                 solver.active_size = l;
             }
-            eprintln!("WARNING: reaching max number of iterations");
+            crate::info("WARNING: reaching max number of iterations\n");
         }
 
         // Calculate rho
@@ -208,10 +208,10 @@ impl<'a> Solver<'a> {
             r,
         };
 
-        eprintln!(
-            "optimization finished, #iter = {}",
+        crate::info(&format!(
+            "optimization finished, #iter = {}\n",
             iter
-        );
+        ));
 
         si
     }
@@ -278,7 +278,7 @@ impl<'a> Solver<'a> {
         }
 
         if 2 * nr_free < self.active_size {
-            eprintln!("WARNING: using -h 0 may be faster");
+            crate::info("WARNING: using -h 0 may be faster\n");
         }
 
         let active_size = self.active_size;

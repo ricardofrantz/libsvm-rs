@@ -201,7 +201,7 @@ fn svm_train_one(
         SvmType::NuSvr => solve_nu_svr(x, labels, param),
     };
 
-    eprintln!("obj = {}, rho = {}", si.obj, si.rho);
+    crate::info(&format!("obj = {:.6}, rho = {:.6}\n", si.obj, si.rho));
 
     // Count SVs
     let n_sv = alpha.iter().filter(|a| a.abs() > 0.0).count();
@@ -216,7 +216,7 @@ fn svm_train_one(
             false
         }
     }).count();
-    eprintln!("nSV = {}, nBSV = {}", n_sv, n_bsv);
+    crate::info(&format!("nSV = {}, nBSV = {}\n", n_sv, n_bsv));
 
     DecisionFunction { alpha, rho: si.rho }
 }
@@ -370,7 +370,7 @@ fn train_classification(problem: &SvmProblem, param: &SvmParameter) -> SvmModel 
     let nr_class = group.nr_class;
 
     if nr_class == 1 {
-        eprintln!("WARNING: training data in only one class. See README for details.");
+        crate::info("WARNING: training data in only one class. See README for details.\n");
     }
 
     // Reorder instances by class
@@ -382,10 +382,10 @@ fn train_classification(problem: &SvmProblem, param: &SvmParameter) -> SvmModel 
         if let Some(j) = group.label.iter().position(|&lab| lab == wlabel) {
             weighted_c[j] *= wval;
         } else {
-            eprintln!(
-                "WARNING: class label {} specified in weight is not found",
+            crate::info(&format!(
+                "WARNING: class label {} specified in weight is not found\n",
                 wlabel
-            );
+            ));
         }
     }
 
@@ -470,7 +470,7 @@ fn train_classification(problem: &SvmProblem, param: &SvmParameter) -> SvmModel 
         n_sv_per_class[i] = n;
     }
 
-    eprintln!("Total nSV = {}", total_sv);
+    crate::info(&format!("Total nSV = {}\n", total_sv));
 
     // Collect SVs and indices
     let mut model_sv = Vec::with_capacity(total_sv);

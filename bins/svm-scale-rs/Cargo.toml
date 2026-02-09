@@ -9,4 +9,3 @@ publish = false
 
 [dependencies]
 libsvm-rs = { workspace = true }
-clap = { workspace = true }

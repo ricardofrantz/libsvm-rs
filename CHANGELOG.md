@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-02-09
+
+### Added
+
+- CLI tools: `svm-train-rs`, `svm-predict-rs`, `svm-scale-rs` matching C LIBSVM interface
+- Quiet mode: `set_quiet(true)` suppresses all solver output; `-q` flag in all CLIs
+- Reference comparison pipeline: scripts to generate and compare outputs against C LIBSVM
+- Criterion benchmarks for training and prediction
+- Property tests for determinism and label-range validation
+- Fuzz targets for problem and model file parsing
+- 4 examples: basic_train, predict_from_model, cross_validation, probability
+- CI: build matrix (3 OS × 2 toolchains), MSRV check, Miri, security audit, coverage, benchmarks
+- Release workflow with prebuilt binaries for Linux, macOS (x86+arm), Windows
+
+### Changed
+
+- Solver output formatting: `obj`, `rho`, `mae` now use `{:.6}` (matches C's `%f`)
+- All internal `eprintln!` calls replaced with `info()` respecting quiet mode
+
 ## [0.4.0] - 2026-02-09
 
 ### Added
@@ -55,7 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Parameter validation with ν-SVC feasibility check
 - 38 tests
 
-[Unreleased]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ricardofrantz/libsvm-rs/commits/v0.2.0
