@@ -214,6 +214,9 @@ pub fn load_problem_from_reader(reader: impl BufRead) -> Result<SvmProblem, SvmE
 
 // ─── Model file I/O ──────────────────────────────────────────────────
 
+const MAX_NR_CLASS: usize = 65535;
+const MAX_TOTAL_SV: usize = 10_000_000;
+
 /// Save an SVM model to a file in the original LIBSVM format.
 pub fn save_model(path: &Path, model: &SvmModel) -> Result<(), SvmError> {
     let file = std::fs::File::create(path)?;
@@ -391,9 +394,21 @@ pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError
             }
             "nr_class" => {
                 nr_class = parse_single(&mut parts, line_num, "nr_class")?;
+                if nr_class > MAX_NR_CLASS {
+                    return Err(SvmError::ModelFormatError(format!(
+                        "line {}: nr_class exceeds limit ({})",
+                        line_num, MAX_NR_CLASS
+                    )));
+                }
             }
             "total_sv" => {
                 total_sv = parse_single(&mut parts, line_num, "total_sv")?;
+                if total_sv > MAX_TOTAL_SV {
+                    return Err(SvmError::ModelFormatError(format!(
+                        "line {}: total_sv exceeds limit ({})",
+                        line_num, MAX_TOTAL_SV
+                    )));
+                }
             }
             "rho" => {
                 rho = parse_multiple_f64(&mut parts, line_num, "rho")?;
@@ -737,5 +752,18 @@ mod tests {
                 assert!((a - b).abs() < 1e-10, "sv_coef mismatch: {} vs {}", a, b);
             }
         }
+    }
+
+    #[test]
+    fn parse_error_excessive_counts() {
+        let input = b"svm_type c_svc\nkernel_type linear\nnr_class 1000000\ntotal_sv 100\nrho 0\nSV\n";
+        let result = load_model_from_reader(&input[..]);
+        assert!(result.is_err());
+        assert!(format!("{}", result.unwrap_err()).contains("nr_class exceeds limit"));
+
+        let input = b"svm_type c_svc\nkernel_type linear\nnr_class 2\ntotal_sv 100000000\nrho 0\nSV\n";
+        let result = load_model_from_reader(&input[..]);
+        assert!(result.is_err());
+        assert!(format!("{}", result.unwrap_err()).contains("total_sv exceeds limit"));
     }
 }
