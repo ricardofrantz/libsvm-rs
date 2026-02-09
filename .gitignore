@@ -5,3 +5,9 @@ Cargo.lock
 # Python
 __pycache__/
 *.pyc
+
+# C compiled artifacts in vendor
+vendor/libsvm/*.o
+vendor/libsvm/svm-train
+vendor/libsvm/svm-predict
+vendor/libsvm/svm-scale

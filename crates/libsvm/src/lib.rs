@@ -15,13 +15,14 @@
 
 pub mod types;
 pub mod error;
+pub mod io;
+pub mod kernel;
+pub mod cache;
+
+pub mod predict;
 
 // Planned modules (not yet implemented):
-// pub mod kernel;
-// pub mod cache;
 // pub mod solver;
-// pub mod io;
-// pub mod predict;
 
 pub use error::SvmError;
 pub use types::*;
