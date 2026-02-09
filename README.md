@@ -109,7 +109,7 @@ libsvm-rs = "0.1.0"
 Until published:
 
 ```bash
-cargo add libsvm-rs --git https://github.com/YOUR_USERNAME/libsvm-rs
+cargo add libsvm-rs --git https://github.com/ricardofrantz/libsvm-rs
 ```
 
 ## Usage Example
