@@ -266,7 +266,7 @@ mod tests {
                 sum
             );
             for &p in &probs {
-                assert!(p >= 0.0 && p <= 1.0, "prob {} out of [0,1]", p);
+                assert!((0.0..=1.0).contains(&p), "prob {} out of [0,1]", p);
             }
         }
     }

@@ -571,7 +571,7 @@ mod tests {
         // Check basic model structure
         assert_eq!(model.nr_class, 2);
         assert_eq!(model.label, vec![1, -1]);
-        assert!(model.sv.len() > 0, "model has no support vectors");
+        assert!(!model.sv.is_empty(), "model has no support vectors");
 
         // Compare with C reference model
         let ref_model = load_model(&data_dir().join("heart_scale_ref.model")).unwrap();
@@ -681,7 +681,7 @@ mod tests {
         let model = svm_train(&problem, &param);
 
         assert_eq!(model.nr_class, 2);
-        assert!(model.sv.len() > 0);
+        assert!(!model.sv.is_empty());
         assert_eq!(model.rho.len(), 1);
 
         // Predict — most training points should be classified as +1 (inlier)
@@ -719,7 +719,7 @@ mod tests {
         let model = svm_train(&problem, &param);
 
         assert_eq!(model.nr_class, 2); // SVR always has nr_class=2
-        assert!(model.sv.len() > 0);
+        assert!(!model.sv.is_empty());
 
         // Compute MSE on training set — should be reasonable
         let mut mse = 0.0;
@@ -752,7 +752,7 @@ mod tests {
         let model = svm_train(&problem, &param);
 
         assert_eq!(model.nr_class, 2);
-        assert!(model.sv.len() > 0);
+        assert!(!model.sv.is_empty());
 
         let mut correct = 0;
         for (i, instance) in problem.instances.iter().enumerate() {
@@ -811,7 +811,7 @@ mod tests {
         let model = svm_train(&problem, &param);
 
         assert_eq!(model.nr_class, 2);
-        assert!(model.sv.len() > 0);
+        assert!(!model.sv.is_empty());
 
         let mut mse = 0.0;
         for (i, instance) in problem.instances.iter().enumerate() {

@@ -455,10 +455,10 @@ mod tests {
     #[test]
     fn sigmoid_predict_stable() {
         let p1 = sigmoid_predict(1000.0, 1.0, 0.0);
-        assert!(p1.is_finite() && p1 >= 0.0 && p1 <= 1.0);
+        assert!(p1.is_finite() && (0.0..=1.0).contains(&p1));
 
         let p2 = sigmoid_predict(-1000.0, 1.0, 0.0);
-        assert!(p2.is_finite() && p2 >= 0.0 && p2 <= 1.0);
+        assert!(p2.is_finite() && (0.0..=1.0).contains(&p2));
     }
 
     #[test]
