@@ -171,6 +171,31 @@ impl Cache {
         if j_in {
             self.lru_insert(i);
         }
+
+        // Column swap: iterate over all cached rows and swap columns i,j.
+        // If a row covers the lower index but not the higher, evict it
+        // (matching the C++ "give up" behavior).
+        let (lo, hi) = if i < j { (i, j) } else { (j, i) };
+        let head = self.l;
+        let mut h = self.nodes[head].next;
+        while h != head {
+            let next = self.nodes[h].next;
+            if self.len[h] > lo {
+                if self.len[h] > hi {
+                    // Row covers both positions — swap the column entries
+                    if let Some(ref mut row) = self.data[h] {
+                        row.swap(lo, hi);
+                    }
+                } else {
+                    // Row covers lo but not hi — evict ("give up")
+                    self.lru_delete(h);
+                    self.size += self.len[h];
+                    self.data[h] = None;
+                    self.len[h] = 0;
+                }
+            }
+            h = next;
+        }
     }
 }
 
@@ -273,20 +298,97 @@ mod tests {
     }
 
     #[test]
-    fn swap_index_works() {
+    fn swap_index_row_swap() {
+        // Test that rows are swapped correctly.
+        // Use full-length rows to avoid column-swap eviction.
         let mut cache = Cache::new(3, 1000);
-        let (data, _) = cache.get_data(0, 2);
+        let (data, _) = cache.get_data(0, 3);
         data[0] = 10.0;
         data[1] = 20.0;
+        data[2] = 30.0;
 
         cache.swap_index(0, 2);
 
-        let (data, start) = cache.get_data(2, 2);
-        assert_eq!(start, 2);
-        assert_eq!(data[0], 10.0);
+        // Row data moved from position 0 to position 2; columns 0,2 also swapped
+        let (data, start) = cache.get_data(2, 3);
+        assert_eq!(start, 3); // fully cached
+        assert_eq!(data[0], 30.0); // was data[2], swapped to col 0
         assert_eq!(data[1], 20.0);
+        assert_eq!(data[2], 10.0); // was data[0], swapped to col 2
 
-        let (_, start) = cache.get_data(0, 2);
+        // Position 0 was empty (row 2 had no data), needs fill
+        let (_, start) = cache.get_data(0, 3);
+        assert_eq!(start, 0);
+    }
+
+    #[test]
+    fn swap_index_swaps_columns_in_other_rows() {
+        // 4 items, generous cache so nothing is evicted by budget
+        let mut cache = Cache::new(4, 10000);
+
+        // Fill row 0 with [1, 2, 3, 4] (covers all 4 columns)
+        let (data, _) = cache.get_data(0, 4);
+        data[0] = 1.0;
+        data[1] = 2.0;
+        data[2] = 3.0;
+        data[3] = 4.0;
+
+        // Fill row 1 with [10, 20, 30, 40]
+        let (data, _) = cache.get_data(1, 4);
+        data[0] = 10.0;
+        data[1] = 20.0;
+        data[2] = 30.0;
+        data[3] = 40.0;
+
+        // Swap indices 1 and 3
+        cache.swap_index(1, 3);
+
+        // Row 0 (now at index 0, not swapped) should have columns 1,3 swapped
+        let (data, start) = cache.get_data(0, 4);
+        assert_eq!(start, 4); // still cached
+        assert_eq!(data[0], 1.0);
+        assert_eq!(data[1], 4.0); // was data[3]
+        assert_eq!(data[2], 3.0);
+        assert_eq!(data[3], 2.0); // was data[1]
+
+        // Row 1 was swapped to position 3, row 3 was swapped to position 1
+        // Row at position 3 (formerly row 1) should have columns 1,3 swapped
+        let (data, start) = cache.get_data(3, 4);
+        assert_eq!(start, 4); // still cached
+        assert_eq!(data[0], 10.0);
+        assert_eq!(data[1], 40.0); // was data[3]
+        assert_eq!(data[2], 30.0);
+        assert_eq!(data[3], 20.0); // was data[1]
+    }
+
+    #[test]
+    fn swap_index_evicts_partial_rows() {
+        // 4 items
+        let mut cache = Cache::new(4, 10000);
+
+        // Fill row 0 with full length 4
+        let (data, _) = cache.get_data(0, 4);
+        data[0] = 1.0;
+        data[1] = 2.0;
+        data[2] = 3.0;
+        data[3] = 4.0;
+
+        // Fill row 1 with length 2 only (covers columns 0,1 but NOT 2,3)
+        let (data, _) = cache.get_data(1, 2);
+        data[0] = 10.0;
+        data[1] = 20.0;
+
+        // Swap indices 1 and 3: row 1 covers col 1 but NOT col 3 → evict
+        cache.swap_index(1, 3);
+
+        // Row 0 has full coverage, columns swapped
+        let (data, start) = cache.get_data(0, 4);
+        assert_eq!(start, 4);
+        assert_eq!(data[1], 4.0);
+        assert_eq!(data[3], 2.0);
+
+        // Row at position 1 (formerly row 3, which was empty) should need fill
+        let (_, start) = cache.get_data(1, 2);
         assert_eq!(start, 0);
     }
 }

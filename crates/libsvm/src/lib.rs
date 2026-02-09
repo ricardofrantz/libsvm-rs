@@ -6,8 +6,10 @@
 //!
 //! ## Status
 //!
-//! **Early development** — core types and I/O are being implemented.
-//! Training and prediction are not yet available.
+//! **Phases 0–3 complete**: types, I/O, kernels, cache, prediction, and full
+//! SMO solver. Training works for all 5 SVM types (C-SVC, ν-SVC, one-class,
+//! ε-SVR, ν-SVR). See [`train::svm_train`] for training and
+//! [`predict::predict`] for inference.
 //!
 //! ## Feature Flags
 //!
@@ -18,11 +20,11 @@ pub mod error;
 pub mod io;
 pub mod kernel;
 pub mod cache;
+pub mod qmatrix;
+pub mod solver;
+pub mod train;
 
 pub mod predict;
-
-// Planned modules (not yet implemented):
-// pub mod solver;
 
 pub use error::SvmError;
 pub use types::*;

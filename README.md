@@ -6,7 +6,7 @@ A **pure Rust** reimplementation of the classic [LIBSVM](https://github.com/cjli
 [![Documentation](https://docs.rs/libsvm-rs/badge.svg)](https://docs.rs/libsvm-rs)
 [![License](https://img.shields.io/badge/license-BSD--3-blue.svg)](LICENSE)
 
-**Status**: Early development (February 2026). Core implementation not yet started.
+**Status**: Active development (February 2026). Phases 0–3 complete (types, I/O, kernels, cache, prediction, **full SMO solver**). Training works for all 5 SVM types.
 
 ## What is LIBSVM?
 
@@ -87,14 +87,17 @@ In practice, this means:
 
 ## Features Roadmap
 
-- [ ] Core data structures (`SvmNode`, `SvmProblem`, `SvmParameter`, `SvmModel`)
-- [ ] All kernels (linear, polynomial, RBF, sigmoid, precomputed)
-- [ ] Kernel cache
-- [ ] Full SMO solver (C-SVC, ν-SVC, ε-SVR, ν-SVR, one-class)
-- [ ] Shrinking heuristic
+- [x] Core data structures (`SvmNode`, `SvmProblem`, `SvmParameter`, `SvmModel`)
+- [x] All kernels (linear, polynomial, RBF, sigmoid, precomputed)
+- [x] Kernel cache (O(1) LRU)
+- [x] Model save/load (exact LIBSVM text format, byte-exact roundtrip)
+- [x] Prediction (verified zero mismatches against C `svm-predict`)
+- [x] Full SMO solver (C-SVC, ν-SVC, ε-SVR, ν-SVR, one-class)
+- [x] Shrinking heuristic
+- [x] WSS3 working-set selection (Fan et al., JMLR 2005)
+- [x] QMatrix implementations (SvcQ, OneClassQ, SvrQ)
 - [ ] Probability estimates (Platt scaling)
 - [ ] Cross-validation (parallel optional)
-- [ ] Model save/load (exact LIBSVM text format)
 - [ ] CLI tools: `svm-train-rs`, `svm-predict-rs`, `svm-scale-rs`
 - [ ] Comprehensive test suite with reference outputs
 
@@ -103,7 +106,7 @@ In practice, this means:
 ```toml
 # Cargo.toml — when published
 [dependencies]
-libsvm-rs = "0.1.0"
+libsvm-rs = "0.3.0"
 ```
 
 Until published:
@@ -115,20 +118,32 @@ cargo add libsvm-rs --git https://github.com/ricardofrantz/libsvm-rs
 ## Usage Example
 
 ```rust
-use libsvm_rs::{SvmParameter, SvmType, KernelType, Trainer, Predictor};
+use libsvm_rs::io::{load_problem, save_model};
+use libsvm_rs::train::svm_train;
+use libsvm_rs::predict::predict;
+use libsvm_rs::{SvmParameter, SvmType, KernelType};
 
-let mut param = SvmParameter::default();
-param.svm_type = SvmType::CSvc;
-param.kernel_type = KernelType::Rbf;
-param.gamma = 0.5;
-param.c = 1.0;
+// Load training data
+let problem = load_problem("heart_scale").unwrap();
 
-let problem = /* load your svm_problem */;
-let model = Trainer::train(&problem, &param)?;
+// Set parameters
+let param = SvmParameter {
+    svm_type: SvmType::CSvc,
+    kernel_type: KernelType::Rbf,
+    gamma: 1.0 / 13.0,  // 1/num_features
+    c: 1.0,
+    ..Default::default()
+};
 
-let nodes = /* your test instance as Vec<SvmNode> */;
-let prediction = Predictor::predict(&model, &nodes);
-println!("Predicted label: {}", prediction);
+// Train
+let model = svm_train(&problem, &param);
+
+// Predict
+let label = predict(&model, &problem.instances[0]);
+println!("Predicted label: {}", label);
+
+// Save model (loadable by original LIBSVM)
+save_model("heart_scale.model", &model).unwrap();
 ```
 
 See `examples/` for full demos (once implemented).
@@ -198,6 +213,34 @@ Contributions welcome! Especially:
 - Performance improvements (preserving numerical behavior).
 
 Open an issue first for major changes.
+
+## Changelog
+
+### v0.3.0 (February 2026) — SMO Solver
+
+- **Full SMO solver** for all 5 SVM types: C-SVC, ν-SVC, one-class, ε-SVR, ν-SVR
+- **WSS3 working-set selection** (second-order heuristic from Fan et al., JMLR 2005)
+- **Shrinking heuristic** with gradient reconstruction
+- **QMatrix trait** with three implementations: `SvcQ`, `OneClassQ`, `SvrQ`
+- **`svm_train`** function producing `SvmModel` compatible with C LIBSVM
+- **Multiclass support** via one-vs-one with class grouping and sv_coef assembly
+- **Cache::swap_index** bug fix — added column swap loop (critical for shrinking correctness)
+- **Kernel refactor** — `Vec<&[SvmNode]>` for swappable data point references
+- 50 tests (12 new), verified against C LIBSVM reference outputs
+
+### v0.2.0 (February 2026) — Prediction & I/O
+
+- Core types: `SvmNode`, `SvmProblem`, `SvmParameter`, `SvmModel`
+- All 5 kernel functions (linear, polynomial, RBF, sigmoid, precomputed)
+- LRU kernel cache
+- Model and problem I/O (LIBSVM text format, byte-exact roundtrip)
+- Prediction (zero mismatches against C `svm-predict` on heart_scale)
+- Parameter validation with ν-SVC feasibility check
+- 38 tests
+
+### v0.1.0 (February 2026) — Initial Release
+
+- Repository setup, workspace layout, CI
 
 ## License
 

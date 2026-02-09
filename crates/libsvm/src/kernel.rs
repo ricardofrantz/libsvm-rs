@@ -117,11 +117,14 @@ pub fn k_function(x: &[SvmNode], y: &[SvmNode], param: &SvmParameter) -> f64 {
 /// Kernel evaluator for training. Holds references to the dataset and
 /// precomputes `x_square[i] = dot(x[i], x[i])` for RBF kernels.
 ///
+/// Stores `Vec<&'a [SvmNode]>` so that the solver can swap entries
+/// during shrinking (mirroring the C++ pointer-array swap trick).
+///
 /// The `kernel_function` method pointer pattern from C++ is replaced
 /// by a match on `kernel_type` — the branch predictor handles this
 /// efficiently since the type doesn't change during training.
 pub struct Kernel<'a> {
-    x: &'a [Vec<SvmNode>],
+    x: Vec<&'a [SvmNode]>,
     x_square: Option<Vec<f64>>,
     kernel_type: KernelType,
     degree: i32,
@@ -132,14 +135,15 @@ pub struct Kernel<'a> {
 impl<'a> Kernel<'a> {
     /// Create a new kernel evaluator for the given dataset and parameters.
     pub fn new(x: &'a [Vec<SvmNode>], param: &SvmParameter) -> Self {
+        let x_refs: Vec<&'a [SvmNode]> = x.iter().map(|xi| xi.as_slice()).collect();
         let x_square = if param.kernel_type == KernelType::Rbf {
-            Some(x.iter().map(|xi| dot(xi, xi)).collect())
+            Some(x_refs.iter().map(|xi| dot(xi, xi)).collect())
         } else {
             None
         };
 
         Self {
-            x,
+            x: x_refs,
             x_square,
             kernel_type: param.kernel_type,
             degree: param.degree,
@@ -148,22 +152,22 @@ impl<'a> Kernel<'a> {
         }
     }
 
-    /// Evaluate K(x[i], x[j]) using precomputed data where possible.
+    /// Evaluate K(x\[i\], x\[j\]) using precomputed data where possible.
     #[inline]
     pub fn evaluate(&self, i: usize, j: usize) -> f64 {
         match self.kernel_type {
-            KernelType::Linear => dot(&self.x[i], &self.x[j]),
+            KernelType::Linear => dot(self.x[i], self.x[j]),
             KernelType::Polynomial => {
-                powi(self.gamma * dot(&self.x[i], &self.x[j]) + self.coef0, self.degree)
+                powi(self.gamma * dot(self.x[i], self.x[j]) + self.coef0, self.degree)
             }
             KernelType::Rbf => {
                 // Use precomputed x_square: ‖x_i - x_j‖² = x_sq[i] + x_sq[j] - 2*dot(x_i, x_j)
                 let sq = self.x_square.as_ref().unwrap();
-                let val = sq[i] + sq[j] - 2.0 * dot(&self.x[i], &self.x[j]);
+                let val = sq[i] + sq[j] - 2.0 * dot(self.x[i], self.x[j]);
                 (-self.gamma * val).exp()
             }
             KernelType::Sigmoid => {
-                (self.gamma * dot(&self.x[i], &self.x[j]) + self.coef0).tanh()
+                (self.gamma * dot(self.x[i], self.x[j]) + self.coef0).tanh()
             }
             KernelType::Precomputed => {
                 let col = self.x[j][0].value as usize;
@@ -172,13 +176,11 @@ impl<'a> Kernel<'a> {
         }
     }
 
-    /// Swap indices i and j (used by the solver during working-set selection).
+    /// Swap data-point references and precomputed squares at positions i and j.
     ///
-    /// Note: this requires mutable access to the underlying data. Since
-    /// the C++ code uses `const_cast`-style tricks, we handle this by
-    /// requiring the caller to manage a mutable index mapping. The
-    /// `Kernel` struct itself doesn't own the data.
-    pub fn swap_x_square(&mut self, i: usize, j: usize) {
+    /// Used by QMatrix implementations during solver shrinking.
+    pub fn swap_index(&mut self, i: usize, j: usize) {
+        self.x.swap(i, j);
         if let Some(ref mut sq) = self.x_square {
             sq.swap(i, j);
         }
