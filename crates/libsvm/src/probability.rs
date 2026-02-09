@@ -1,0 +1,503 @@
+//! Probability estimation functions for SVM models.
+//!
+//! Provides Platt scaling (`sigmoid_train`/`sigmoid_predict`), multiclass
+//! probability estimation, and density-based probability for one-class SVM.
+//! Matches the original LIBSVM's probability routines (svm.cpp:1714–2096).
+
+use crate::predict::predict_values;
+use crate::train::svm_train;
+use crate::types::{SvmModel, SvmParameter, SvmProblem};
+
+// ─── RNG helper ──────────────────────────────────────────────────────
+
+fn rng_next(state: &mut u64) -> usize {
+    *state = state
+        .wrapping_mul(6364136223846793005)
+        .wrapping_add(1442695040888963407);
+    (*state >> 33) as usize
+}
+
+// ─── Platt scaling ───────────────────────────────────────────────────
+
+/// Train Platt scaling parameters (A, B) via Newton's method.
+///
+/// Given decision values and labels (+1/−1), fits the sigmoid
+/// P(y=1|f) = 1/(1+exp(A*f+B)) using the algorithm of Lin, Lin &
+/// Weng (2007). Matches LIBSVM's `sigmoid_train`.
+pub fn sigmoid_train(dec_values: &[f64], labels: &[f64]) -> (f64, f64) {
+    let l = dec_values.len();
+
+    let mut prior1: f64 = 0.0;
+    let mut prior0: f64 = 0.0;
+    for &y in labels {
+        if y > 0.0 {
+            prior1 += 1.0;
+        } else {
+            prior0 += 1.0;
+        }
+    }
+
+    let max_iter = 100;
+    let min_step = 1e-10;
+    let sigma = 1e-12;
+    let eps = 1e-5;
+
+    let hi_target = (prior1 + 1.0) / (prior1 + 2.0);
+    let lo_target = 1.0 / (prior0 + 2.0);
+
+    let t: Vec<f64> = labels
+        .iter()
+        .map(|&y| if y > 0.0 { hi_target } else { lo_target })
+        .collect();
+
+    // Initial point
+    let mut a = 0.0;
+    let mut b = ((prior0 + 1.0) / (prior1 + 1.0)).ln();
+
+    // Initial objective
+    let mut fval = 0.0;
+    for i in 0..l {
+        let f_apb = dec_values[i] * a + b;
+        if f_apb >= 0.0 {
+            fval += t[i] * f_apb + (1.0 + (-f_apb).exp()).ln();
+        } else {
+            fval += (t[i] - 1.0) * f_apb + (1.0 + f_apb.exp()).ln();
+        }
+    }
+
+    for _iter in 0..max_iter {
+        // Gradient and Hessian (H' = H + σI)
+        let mut h11 = sigma;
+        let mut h22 = sigma;
+        let mut h21 = 0.0;
+        let mut g1 = 0.0;
+        let mut g2 = 0.0;
+
+        for i in 0..l {
+            let f_apb = dec_values[i] * a + b;
+            let (p, q) = if f_apb >= 0.0 {
+                let e = (-f_apb).exp();
+                (e / (1.0 + e), 1.0 / (1.0 + e))
+            } else {
+                let e = f_apb.exp();
+                (1.0 / (1.0 + e), e / (1.0 + e))
+            };
+            let d2 = p * q;
+            h11 += dec_values[i] * dec_values[i] * d2;
+            h22 += d2;
+            h21 += dec_values[i] * d2;
+            let d1 = t[i] - p;
+            g1 += dec_values[i] * d1;
+            g2 += d1;
+        }
+
+        if g1.abs() < eps && g2.abs() < eps {
+            break;
+        }
+
+        // Newton direction: −H'⁻¹ g
+        let det = h11 * h22 - h21 * h21;
+        let da = -(h22 * g1 - h21 * g2) / det;
+        let db = -(-h21 * g1 + h11 * g2) / det;
+        let gd = g1 * da + g2 * db;
+
+        // Line search with step-size halving
+        let mut stepsize = 1.0;
+        while stepsize >= min_step {
+            let new_a = a + stepsize * da;
+            let new_b = b + stepsize * db;
+
+            let mut newf = 0.0;
+            for i in 0..l {
+                let f_apb = dec_values[i] * new_a + new_b;
+                if f_apb >= 0.0 {
+                    newf += t[i] * f_apb + (1.0 + (-f_apb).exp()).ln();
+                } else {
+                    newf += (t[i] - 1.0) * f_apb + (1.0 + f_apb.exp()).ln();
+                }
+            }
+
+            if newf < fval + 0.0001 * stepsize * gd {
+                a = new_a;
+                b = new_b;
+                fval = newf;
+                break;
+            }
+            stepsize /= 2.0;
+        }
+
+        if stepsize < min_step {
+            break;
+        }
+    }
+
+    (a, b)
+}
+
+/// Numerically stable sigmoid prediction.
+///
+/// Returns P(y=1|f) = 1/(1+exp(A*f+B)), branching on sign of A*f+B
+/// to avoid overflow. Matches LIBSVM's `sigmoid_predict`.
+pub fn sigmoid_predict(decision_value: f64, a: f64, b: f64) -> f64 {
+    let f_apb = decision_value * a + b;
+    if f_apb >= 0.0 {
+        (-f_apb).exp() / (1.0 + (-f_apb).exp())
+    } else {
+        1.0 / (1.0 + f_apb.exp())
+    }
+}
+
+// ─── Multiclass probability ──────────────────────────────────────────
+
+/// Solve multiclass probabilities from pairwise estimates.
+///
+/// Given `k` classes and a k×k matrix `r` of pairwise probabilities
+/// (r\[i\]\[j\] = P(class i | class i or j)), fills `p` with class
+/// probabilities using the Wu-Lin-Weng iterative method.
+///
+/// Matches LIBSVM's `multiclass_probability`.
+pub fn multiclass_probability(k: usize, r: &[Vec<f64>], p: &mut [f64]) {
+    let max_iter = 100.max(k);
+    let eps = 0.005 / k as f64;
+
+    // Build Q matrix
+    let mut q_mat = vec![vec![0.0; k]; k];
+    for t in 0..k {
+        q_mat[t][t] = 0.0;
+        for j in 0..t {
+            q_mat[t][t] += r[j][t] * r[j][t];
+            q_mat[t][j] = q_mat[j][t];
+        }
+        for j in (t + 1)..k {
+            q_mat[t][t] += r[j][t] * r[j][t];
+            q_mat[t][j] = -r[j][t] * r[t][j];
+        }
+    }
+
+    for t in 0..k {
+        p[t] = 1.0 / k as f64;
+    }
+
+    let mut qp = vec![0.0; k];
+
+    for _iter in 0..max_iter {
+        let mut p_qp = 0.0;
+        for t in 0..k {
+            qp[t] = 0.0;
+            for j in 0..k {
+                qp[t] += q_mat[t][j] * p[j];
+            }
+            p_qp += p[t] * qp[t];
+        }
+
+        let mut max_error = 0.0;
+        for t in 0..k {
+            let error = (qp[t] - p_qp).abs();
+            if error > max_error {
+                max_error = error;
+            }
+        }
+        if max_error < eps {
+            break;
+        }
+
+        for t in 0..k {
+            let diff = (-qp[t] + p_qp) / q_mat[t][t];
+            p[t] += diff;
+            p_qp = (p_qp + diff * (diff * q_mat[t][t] + 2.0 * qp[t]))
+                / (1.0 + diff)
+                / (1.0 + diff);
+            for j in 0..k {
+                qp[j] = (qp[j] + diff * q_mat[t][j]) / (1.0 + diff);
+                p[j] /= 1.0 + diff;
+            }
+        }
+    }
+}
+
+// ─── Binary SVC probability via internal CV ──────────────────────────
+
+/// Estimate Platt scaling parameters for a binary sub-problem.
+///
+/// Performs 5-fold CV internally: trains on 4 folds with class weights
+/// (cp, cn), collects decision values on the held-out fold, then fits
+/// a sigmoid via `sigmoid_train`.
+///
+/// Matches LIBSVM's `svm_binary_svc_probability`.
+pub fn svm_binary_svc_probability(
+    prob: &SvmProblem,
+    param: &SvmParameter,
+    cp: f64,
+    cn: f64,
+) -> (f64, f64) {
+    let l = prob.labels.len();
+    let nr_fold = 5;
+    let mut perm: Vec<usize> = (0..l).collect();
+    let mut dec_values = vec![0.0; l];
+
+    // Random shuffle (Fisher-Yates)
+    let mut rng: u64 = 1;
+    for i in 0..l {
+        let j = i + rng_next(&mut rng) % (l - i);
+        perm.swap(i, j);
+    }
+
+    for fold in 0..nr_fold {
+        let begin = fold * l / nr_fold;
+        let end = (fold + 1) * l / nr_fold;
+
+        // Build training sub-problem (exclude held-out fold)
+        let mut sub_instances = Vec::with_capacity(l - (end - begin));
+        let mut sub_labels = Vec::with_capacity(l - (end - begin));
+
+        for j in 0..begin {
+            sub_instances.push(prob.instances[perm[j]].clone());
+            sub_labels.push(prob.labels[perm[j]]);
+        }
+        for j in end..l {
+            sub_instances.push(prob.instances[perm[j]].clone());
+            sub_labels.push(prob.labels[perm[j]]);
+        }
+
+        // Count classes in training set
+        let p_count = sub_labels.iter().filter(|&&y| y > 0.0).count();
+        let n_count = sub_labels.len() - p_count;
+
+        if p_count == 0 && n_count == 0 {
+            for j in begin..end {
+                dec_values[perm[j]] = 0.0;
+            }
+        } else if p_count > 0 && n_count == 0 {
+            for j in begin..end {
+                dec_values[perm[j]] = 1.0;
+            }
+        } else if p_count == 0 && n_count > 0 {
+            for j in begin..end {
+                dec_values[perm[j]] = -1.0;
+            }
+        } else {
+            let mut subparam = param.clone();
+            subparam.probability = false;
+            subparam.c = 1.0;
+            subparam.weight = vec![(1, cp), (-1, cn)];
+
+            let subprob = SvmProblem {
+                labels: sub_labels,
+                instances: sub_instances,
+            };
+            let submodel = svm_train(&subprob, &subparam);
+
+            for j in begin..end {
+                let mut dv = [0.0];
+                predict_values(&submodel, &prob.instances[perm[j]], &mut dv);
+                // Sign correction: ensure +1/−1 ordering
+                dec_values[perm[j]] = dv[0] * submodel.label[0] as f64;
+            }
+        }
+    }
+
+    sigmoid_train(&dec_values, &prob.labels)
+}
+
+// ─── One-class probability ───────────────────────────────────────────
+
+/// Predict probability for one-class SVM from density marks.
+///
+/// Bin-lookup in precomputed density marks (10 entries). Returns a
+/// probability estimate in (0, 1).
+///
+/// Matches LIBSVM's `predict_one_class_probability`.
+pub fn predict_one_class_probability(prob_density_marks: &[f64], dec_value: f64) -> f64 {
+    let nr_marks = prob_density_marks.len();
+    if nr_marks == 0 {
+        return 0.5;
+    }
+
+    if dec_value < prob_density_marks[0] {
+        return 0.001;
+    }
+    if dec_value > prob_density_marks[nr_marks - 1] {
+        return 0.999;
+    }
+
+    for i in 1..nr_marks {
+        if dec_value < prob_density_marks[i] {
+            return i as f64 / nr_marks as f64;
+        }
+    }
+
+    0.999
+}
+
+/// Estimate probability density marks for one-class SVM.
+///
+/// Predicts all training instances, sorts decision values, bins into
+/// 10 density marks. Returns `None` if fewer than 5 positive or 5
+/// negative decision values.
+///
+/// Matches LIBSVM's `svm_one_class_probability`.
+pub fn svm_one_class_probability(
+    prob: &SvmProblem,
+    model: &SvmModel,
+) -> Option<Vec<f64>> {
+    let l = prob.labels.len();
+    let mut dec_values = vec![0.0; l];
+
+    for (i, instance) in prob.instances.iter().enumerate() {
+        let mut dv = [0.0];
+        predict_values(model, instance, &mut dv);
+        dec_values[i] = dv[0];
+    }
+
+    dec_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+    // Find first index with dec_value >= 0  (= neg_counter in C++)
+    let mut neg_counter = 0usize;
+    for i in 0..l {
+        if dec_values[i] >= 0.0 {
+            neg_counter = i;
+            break;
+        }
+    }
+    let pos_counter = l - neg_counter;
+
+    let nr_marks: usize = 10;
+    let mid = nr_marks / 2; // 5
+
+    if neg_counter < mid || pos_counter < mid {
+        eprintln!(
+            "WARNING: number of positive or negative decision values <{}; \
+             too few to do a probability estimation.",
+            mid
+        );
+        return None;
+    }
+
+    let mut tmp_marks = vec![0.0; nr_marks + 1];
+
+    for i in 0..mid {
+        tmp_marks[i] = dec_values[i * neg_counter / mid];
+    }
+    tmp_marks[mid] = 0.0;
+    for i in (mid + 1)..=nr_marks {
+        tmp_marks[i] = dec_values[neg_counter - 1 + (i - mid) * pos_counter / mid];
+    }
+
+    let mut marks = vec![0.0; nr_marks];
+    for i in 0..nr_marks {
+        marks[i] = (tmp_marks[i] + tmp_marks[i + 1]) / 2.0;
+    }
+
+    Some(marks)
+}
+
+// ─── SVR probability ─────────────────────────────────────────────────
+
+/// Estimate Laplace scale parameter for SVR probability.
+///
+/// Performs 5-fold CV to get residuals, computes MAE, then applies
+/// outlier rejection (exclude |residual| > 5·√(2·mae²)) and
+/// recomputes. Returns the final MAE (= σ of Laplace distribution).
+///
+/// Matches LIBSVM's `svm_svr_probability`.
+pub fn svm_svr_probability(prob: &SvmProblem, param: &SvmParameter) -> f64 {
+    let l = prob.labels.len();
+    let nr_fold = 5;
+
+    let mut newparam = param.clone();
+    newparam.probability = false;
+    let ymv = crate::cross_validation::svm_cross_validation(prob, &newparam, nr_fold);
+
+    // Compute residuals and initial MAE
+    let mut ymv_residuals: Vec<f64> = Vec::with_capacity(l);
+    let mut mae = 0.0;
+    for i in 0..l {
+        let r = prob.labels[i] - ymv[i];
+        ymv_residuals.push(r);
+        mae += r.abs();
+    }
+    mae /= l as f64;
+
+    // Outlier rejection
+    let std_val = (2.0 * mae * mae).sqrt();
+    let mut count = 0usize;
+    mae = 0.0;
+    for i in 0..l {
+        if ymv_residuals[i].abs() > 5.0 * std_val {
+            count += 1;
+        } else {
+            mae += ymv_residuals[i].abs();
+        }
+    }
+    mae /= (l - count) as f64;
+
+    eprintln!(
+        "Prob. model for test data: target value = predicted value + z,\n\
+         z: Laplace distribution e^(-|z|/sigma)/(2sigma),sigma= {}",
+        mae
+    );
+
+    mae
+}
+
+// ─── Tests ───────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sigmoid_predict_symmetric() {
+        let p = sigmoid_predict(0.0, 0.0, 0.0);
+        assert!((p - 0.5).abs() < 1e-10);
+    }
+
+    #[test]
+    fn sigmoid_predict_stable() {
+        let p1 = sigmoid_predict(1000.0, 1.0, 0.0);
+        assert!(p1.is_finite() && p1 >= 0.0 && p1 <= 1.0);
+
+        let p2 = sigmoid_predict(-1000.0, 1.0, 0.0);
+        assert!(p2.is_finite() && p2 >= 0.0 && p2 <= 1.0);
+    }
+
+    #[test]
+    fn sigmoid_train_basic() {
+        let dec = vec![1.0, 2.0, -1.0, -2.0, 0.5];
+        let lab = vec![1.0, 1.0, -1.0, -1.0, 1.0];
+        let (a, b) = sigmoid_train(&dec, &lab);
+        assert!(a.is_finite());
+        assert!(b.is_finite());
+    }
+
+    #[test]
+    fn multiclass_prob_sums_to_one() {
+        let k = 3;
+        let r = vec![
+            vec![0.0, 0.6, 0.5],
+            vec![0.4, 0.0, 0.7],
+            vec![0.5, 0.3, 0.0],
+        ];
+        let mut p = vec![0.0; k];
+        multiclass_probability(k, &r, &mut p);
+
+        let sum: f64 = p.iter().sum();
+        assert!(
+            (sum - 1.0).abs() < 1e-6,
+            "probabilities sum to {}, expected ~1.0",
+            sum
+        );
+        for &pi in &p {
+            assert!(pi > 0.0, "probability should be positive, got {}", pi);
+        }
+    }
+
+    #[test]
+    fn predict_one_class_prob_boundaries() {
+        let marks = vec![-0.9, -0.7, -0.5, -0.3, -0.1, 0.1, 0.3, 0.5, 0.7, 0.9];
+        assert!((predict_one_class_probability(&marks, -1.0) - 0.001).abs() < 1e-10);
+        assert!((predict_one_class_probability(&marks, 1.0) - 0.999).abs() < 1e-10);
+        let mid = predict_one_class_probability(&marks, 0.0);
+        assert!(mid > 0.0 && mid < 1.0);
+    }
+}

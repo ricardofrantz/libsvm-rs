@@ -6,10 +6,12 @@
 //!
 //! ## Status
 //!
-//! **Phases 0–3 complete**: types, I/O, kernels, cache, prediction, and full
-//! SMO solver. Training works for all 5 SVM types (C-SVC, ν-SVC, one-class,
-//! ε-SVR, ν-SVR). See [`train::svm_train`] for training and
-//! [`predict::predict`] for inference.
+//! **Phases 0–4 complete**: types, I/O, kernels, cache, prediction, full
+//! SMO solver, probability estimates (Platt scaling), and cross-validation.
+//! Training works for all 5 SVM types (C-SVC, ν-SVC, one-class, ε-SVR,
+//! ν-SVR). See [`train::svm_train`] for training, [`predict::predict`]
+//! for inference, and [`predict::predict_probability`] for probabilistic
+//! outputs.
 //!
 //! ## Feature Flags
 //!
@@ -25,6 +27,8 @@ pub mod solver;
 pub mod train;
 
 pub mod predict;
+pub mod probability;
+pub mod cross_validation;
 
 pub use error::SvmError;
 pub use types::*;

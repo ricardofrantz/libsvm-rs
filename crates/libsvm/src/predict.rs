@@ -1,11 +1,13 @@
 //! Prediction functions matching the original LIBSVM.
 //!
-//! Provides `predict` and `predict_values` for all SVM types:
-//! - Classification (C-SVC, ν-SVC): one-vs-one voting
-//! - One-class SVM: sign of decision value
+//! Provides `predict`, `predict_values`, and `predict_probability` for
+//! all SVM types:
+//! - Classification (C-SVC, ν-SVC): one-vs-one voting + optional probability
+//! - One-class SVM: sign of decision value + optional density probability
 //! - Regression (ε-SVR, ν-SVR): continuous output
 
 use crate::kernel::k_function;
+use crate::probability::{multiclass_probability, predict_one_class_probability, sigmoid_predict};
 use crate::types::{SvmModel, SvmNode, SvmType};
 
 /// Compute decision values and return the predicted label/value.
@@ -111,6 +113,76 @@ pub fn predict(model: &SvmModel, x: &[SvmNode]) -> f64 {
     predict_values(model, x, &mut dec_values)
 }
 
+/// Predict with probability estimates.
+///
+/// Returns `Some((label, probs))` where `probs[i]` is the estimated
+/// probability of class `model.label[i]`. Returns `None` when the
+/// model was not trained with probability support.
+///
+/// - **C-SVC / ν-SVC**: requires `model.prob_a` and `model.prob_b`.
+///   Uses Platt scaling on pairwise decision values, then
+///   `multiclass_probability` for k > 2.
+/// - **One-class**: requires `model.prob_density_marks`.
+///   Returns `[p, 1-p]` via density-mark lookup.
+/// - **SVR**: probability prediction is not supported (returns `None`).
+///
+/// Matches LIBSVM's `svm_predict_probability`.
+pub fn predict_probability(model: &SvmModel, x: &[SvmNode]) -> Option<(f64, Vec<f64>)> {
+    match model.param.svm_type {
+        SvmType::CSvc | SvmType::NuSvc
+            if !model.prob_a.is_empty() && !model.prob_b.is_empty() =>
+        {
+            let nr_class = model.nr_class;
+            let n_pairs = nr_class * (nr_class - 1) / 2;
+            let mut dec_values = vec![0.0; n_pairs];
+            predict_values(model, x, &mut dec_values);
+
+            let min_prob = 1e-7;
+
+            // Build pairwise probability matrix
+            let mut pairwise = vec![vec![0.0; nr_class]; nr_class];
+            let mut k = 0;
+            for i in 0..nr_class {
+                for j in (i + 1)..nr_class {
+                    let p = sigmoid_predict(dec_values[k], model.prob_a[k], model.prob_b[k])
+                        .max(min_prob)
+                        .min(1.0 - min_prob);
+                    pairwise[i][j] = p;
+                    pairwise[j][i] = 1.0 - p;
+                    k += 1;
+                }
+            }
+
+            let mut prob_estimates = vec![0.0; nr_class];
+            if nr_class == 2 {
+                prob_estimates[0] = pairwise[0][1];
+                prob_estimates[1] = pairwise[1][0];
+            } else {
+                multiclass_probability(nr_class, &pairwise, &mut prob_estimates);
+            }
+
+            // Find class with highest probability
+            let mut best = 0;
+            for i in 1..nr_class {
+                if prob_estimates[i] > prob_estimates[best] {
+                    best = i;
+                }
+            }
+
+            Some((model.label[best] as f64, prob_estimates))
+        }
+
+        SvmType::OneClass if !model.prob_density_marks.is_empty() => {
+            let mut dec_value = [0.0];
+            let pred_result = predict_values(model, x, &mut dec_value);
+            let p = predict_one_class_probability(&model.prob_density_marks, dec_value[0]);
+            Some((pred_result, vec![p, 1.0 - p]))
+        }
+
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -161,6 +233,75 @@ mod tests {
         assert!(dec_values[0].abs() > 1e-10);
         // Label should match what predict returns
         assert_eq!(label, predict(&model, &problem.instances[0]));
+    }
+
+    #[test]
+    fn predict_probability_binary() {
+        let problem = load_problem(&data_dir().join("heart_scale")).unwrap();
+        let param = crate::types::SvmParameter {
+            svm_type: SvmType::CSvc,
+            kernel_type: crate::types::KernelType::Rbf,
+            gamma: 1.0 / 13.0,
+            c: 1.0,
+            cache_size: 100.0,
+            eps: 0.001,
+            shrinking: true,
+            probability: true,
+            ..Default::default()
+        };
+
+        let model = crate::train::svm_train(&problem, &param);
+        assert!(!model.prob_a.is_empty());
+
+        for instance in &problem.instances {
+            let result = predict_probability(&model, instance);
+            assert!(result.is_some(), "should return probability");
+            let (label, probs) = result.unwrap();
+            assert!(label == 1.0 || label == -1.0);
+            assert_eq!(probs.len(), 2);
+            let sum: f64 = probs.iter().sum();
+            assert!(
+                (sum - 1.0).abs() < 1e-6,
+                "probs sum to {}, expected 1.0",
+                sum
+            );
+            for &p in &probs {
+                assert!(p >= 0.0 && p <= 1.0, "prob {} out of [0,1]", p);
+            }
+        }
+    }
+
+    #[test]
+    fn predict_probability_multiclass() {
+        let problem = load_problem(&data_dir().join("iris.scale")).unwrap();
+        let param = crate::types::SvmParameter {
+            svm_type: SvmType::CSvc,
+            kernel_type: crate::types::KernelType::Rbf,
+            gamma: 0.25,
+            c: 1.0,
+            cache_size: 100.0,
+            eps: 0.001,
+            shrinking: true,
+            probability: true,
+            ..Default::default()
+        };
+
+        let model = crate::train::svm_train(&problem, &param);
+        assert_eq!(model.nr_class, 3);
+        assert_eq!(model.prob_a.len(), 3); // 3 pairs
+
+        for instance in problem.instances.iter().take(10) {
+            let result = predict_probability(&model, instance);
+            assert!(result.is_some());
+            let (_label, probs) = result.unwrap();
+            assert_eq!(probs.len(), 3);
+            let sum: f64 = probs.iter().sum();
+            assert!(
+                (sum - 1.0).abs() < 1e-6,
+                "probs sum to {}, expected 1.0",
+                sum
+            );
+        }
     }
 
     #[test]

@@ -328,7 +328,7 @@ fn train_regression_or_one_class(problem: &SvmProblem, param: &SvmParameter) -> 
         }
     }
 
-    SvmModel {
+    let mut model = SvmModel {
         param: param.clone(),
         nr_class: 2,
         sv,
@@ -340,7 +340,28 @@ fn train_regression_or_one_class(problem: &SvmProblem, param: &SvmParameter) -> 
         sv_indices,
         label: Vec::new(),
         n_sv: Vec::new(),
+    };
+
+    // Probability estimates
+    if param.probability {
+        match param.svm_type {
+            SvmType::EpsilonSvr | SvmType::NuSvr => {
+                model.prob_a = vec![
+                    crate::probability::svm_svr_probability(problem, param)
+                ];
+            }
+            SvmType::OneClass => {
+                if let Some(marks) =
+                    crate::probability::svm_one_class_probability(problem, &model)
+                {
+                    model.prob_density_marks = marks;
+                }
+            }
+            _ => {}
+        }
     }
+
+    model
 }
 
 fn train_classification(problem: &SvmProblem, param: &SvmParameter) -> SvmModel {
@@ -373,6 +394,14 @@ fn train_classification(problem: &SvmProblem, param: &SvmParameter) -> SvmModel 
     let n_pairs = nr_class * (nr_class - 1) / 2;
     let mut decisions = Vec::with_capacity(n_pairs);
 
+    // Probability arrays (filled only when param.probability is set)
+    let mut prob_a = Vec::new();
+    let mut prob_b = Vec::new();
+    if param.probability {
+        prob_a.reserve(n_pairs);
+        prob_b.reserve(n_pairs);
+    }
+
     for i in 0..nr_class {
         for j in (i + 1)..nr_class {
             let si = group.start[i];
@@ -390,6 +419,19 @@ fn train_classification(problem: &SvmProblem, param: &SvmParameter) -> SvmModel 
             for k in 0..cj {
                 sub_x.push(x[sj + k].clone());
                 sub_labels.push(-1.0);
+            }
+
+            // Probability estimates via internal 5-fold CV (before final training)
+            if param.probability {
+                let sub_prob = SvmProblem {
+                    labels: sub_labels.clone(),
+                    instances: sub_x.clone(),
+                };
+                let (pa, pb) = crate::probability::svm_binary_svc_probability(
+                    &sub_prob, param, weighted_c[i], weighted_c[j],
+                );
+                prob_a.push(pa);
+                prob_b.push(pb);
             }
 
             let f = svm_train_one(&sub_x, &sub_labels, param, weighted_c[i], weighted_c[j]);
@@ -487,8 +529,8 @@ fn train_classification(problem: &SvmProblem, param: &SvmParameter) -> SvmModel 
         sv: model_sv,
         sv_coef,
         rho,
-        prob_a: Vec::new(),
-        prob_b: Vec::new(),
+        prob_a,
+        prob_b,
         prob_density_marks: Vec::new(),
         sv_indices: model_sv_indices,
         label: labels,
@@ -725,6 +767,30 @@ mod tests {
             "nu-SVC accuracy {:.2}% too low",
             accuracy * 100.0
         );
+    }
+
+    #[test]
+    fn train_csvc_with_probability() {
+        let problem = load_problem(&data_dir().join("heart_scale")).unwrap();
+        let param = SvmParameter {
+            svm_type: SvmType::CSvc,
+            kernel_type: KernelType::Rbf,
+            gamma: 1.0 / 13.0,
+            c: 1.0,
+            cache_size: 100.0,
+            eps: 0.001,
+            shrinking: true,
+            probability: true,
+            ..Default::default()
+        };
+
+        let model = svm_train(&problem, &param);
+
+        assert_eq!(model.nr_class, 2);
+        assert_eq!(model.prob_a.len(), 1, "binary should have 1 probA");
+        assert_eq!(model.prob_b.len(), 1, "binary should have 1 probB");
+        assert!(model.prob_a[0].is_finite());
+        assert!(model.prob_b[0].is_finite());
     }
 
     #[test]
