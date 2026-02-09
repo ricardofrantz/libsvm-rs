@@ -166,8 +166,9 @@ pub fn load_problem_from_reader(reader: impl BufRead) -> Result<SvmProblem, SvmE
             message: format!("invalid label: {}", label_str),
         })?;
 
-        // Parse features
+        // Parse features (must be in ascending index order)
         let mut nodes = Vec::new();
+        let mut prev_index: i32 = 0;
         for token in parts {
             let (idx_str, val_str) = token.split_once(':').ok_or_else(|| SvmError::ParseError {
                 line: line_num,
@@ -177,10 +178,20 @@ pub fn load_problem_from_reader(reader: impl BufRead) -> Result<SvmProblem, SvmE
                 line: line_num,
                 message: format!("invalid index: {}", idx_str),
             })?;
+            if !nodes.is_empty() && index <= prev_index {
+                return Err(SvmError::ParseError {
+                    line: line_num,
+                    message: format!(
+                        "feature indices must be ascending: {} follows {}",
+                        index, prev_index
+                    ),
+                });
+            }
             let value: f64 = val_str.parse().map_err(|_| SvmError::ParseError {
                 line: line_num,
                 message: format!("invalid value: {}", val_str),
             })?;
+            prev_index = index;
             nodes.push(SvmNode { index, value });
         }
 
@@ -574,6 +585,22 @@ mod tests {
         let input = b"+1 1:0.5\n\n-1 2:0.3\n";
         let problem = load_problem_from_reader(&input[..]).unwrap();
         assert_eq!(problem.labels.len(), 2);
+    }
+
+    #[test]
+    fn parse_error_unsorted_indices() {
+        let input = b"+1 3:0.5 1:0.3\n";
+        let result = load_problem_from_reader(&input[..]);
+        assert!(result.is_err());
+        let msg = format!("{}", result.unwrap_err());
+        assert!(msg.contains("ascending"), "error: {}", msg);
+    }
+
+    #[test]
+    fn parse_error_duplicate_indices() {
+        let input = b"+1 1:0.5 1:0.3\n";
+        let result = load_problem_from_reader(&input[..]);
+        assert!(result.is_err());
     }
 
     #[test]

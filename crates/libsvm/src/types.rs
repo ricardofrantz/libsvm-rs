@@ -187,6 +187,10 @@ pub fn check_parameter(
 
     // ν-SVC feasibility: for every pair of classes (i, j),
     // nu * (count_i + count_j) / 2 must be <= min(count_i, count_j)
+    //
+    // Note: LIBSVM casts labels to int for class grouping. We match this
+    // behavior. Classification labels must be integers (non-integer labels
+    // will be truncated, matching `(int)prob->y[i]` in the C code).
     if param.svm_type == SvmType::NuSvc {
         let mut class_counts: Vec<(i32, usize)> = Vec::new();
         for &y in &problem.labels {
