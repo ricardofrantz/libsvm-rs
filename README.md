@@ -30,9 +30,11 @@ libsvm-rs = "0.6"
 ### CLI tools
 
 ```bash
-cargo install libsvm-rs --bin svm-train-rs
-cargo install libsvm-rs --bin svm-predict-rs
-cargo install libsvm-rs --bin svm-scale-rs
+# Clone and build from source (CLIs are workspace members, not published separately)
+git clone https://github.com/ricardofrantz/libsvm-rs.git
+cd libsvm-rs
+cargo build --release -p svm-train-rs -p svm-predict-rs -p svm-scale-rs
+# Binaries are in target/release/
 ```
 
 ## Quick Start
@@ -64,7 +66,8 @@ let label = predict(&model, &problem.instances[0]);
 println!("predicted label: {label}");
 
 // Get decision values (useful for ranking or custom thresholds)
-let (label, dec_values) = predict_values(&model, &problem.instances[0]);
+let mut dec_values = vec![0.0f64; model.nr_class * (model.nr_class - 1) / 2];
+let label = predict_values(&model, &problem.instances[0], &mut dec_values);
 println!("decision values: {dec_values:?}");
 
 // Save/load models (compatible with C LIBSVM format)
@@ -96,8 +99,9 @@ param.kernel_type = KernelType::Rbf;
 param.gamma = 1.0 / 13.0;
 
 let model = svm_train(&problem, &param);
-let (label, probs) = predict_probability(&model, &problem.instances[0]);
-println!("label: {label}, class probabilities: {probs:?}");
+if let Some((label, probs)) = predict_probability(&model, &problem.instances[0]) {
+    println!("label: {label}, class probabilities: {probs:?}");
+}
 ```
 
 ## CLI Usage
@@ -300,7 +304,7 @@ Types matching LIBSVM's `svm.h`:
 
 **Key design choice**: `SvmNode.index` is `i32` (not `usize`) to match LIBSVM's C `int` and preserve file format compatibility. Sentinel nodes (`index == -1`) used in C to terminate instance arrays are not stored — Rust's `Vec::len()` tracks instance length instead.
 
-`SvmParameter::default()` produces the same defaults as LIBSVM: `svm_type = CSvc`, `kernel_type = Rbf`, `degree = 3`, `gamma = 0` (auto-detected as 1/num_features), `coef0 = 0`, `c = 1`, `nu = 0.5`, `eps = 0.001`, `cache_size = 40 MB`, `shrinking = true`.
+`SvmParameter::default()` produces the same defaults as LIBSVM: `svm_type = CSvc`, `kernel_type = Rbf`, `degree = 3`, `gamma = 0` (auto-detected as 1/num_features), `coef0 = 0`, `c = 1`, `nu = 0.5`, `eps = 0.001`, `cache_size = 100 MB`, `shrinking = true`.
 
 ### kernel.rs — Kernel Evaluation
 
