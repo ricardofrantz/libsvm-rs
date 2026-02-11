@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-02-11
+
+### Added
+
+- Testing and validation infrastructure:
+  - Differential verification suite against upstream LIBSVM (250 test configurations)
+  - Upstream lock file and CI validation (`reference/libsvm_upstream_lock.json`)
+  - Deterministic synthetic dataset generation (6 families: binary, multiclass, one-class, regression, sparse, extreme scale)
+  - Reference build pipeline with provenance tracking (`scripts/setup_reference_libsvm.sh`)
+  - Coverage threshold checking with CI enforcement (93.19% line coverage, 92.86% function coverage)
+  - Benchmark comparison framework (`scripts/benchmark_compare.py`)
+  - Tolerance policy documentation (`reference/tolerance_policy.md`)
+- Precomputed kernel support:
+  - Full training and prediction support for precomputed kernels (kernel_type=4)
+  - Validation and reference data for heart_scale, iris.scale, housing_scale
+- CLI integration tests:
+  - `svm-train-rs`: model file output, cross-validation, quiet mode
+  - `svm-predict-rs`: prediction output, probability mode rejection for non-prob models, quiet mode
+  - `svm-scale-rs`: scaling output, save/restore parameters, negative index hardening, inconsistent bounds checking
+- Library enhancements:
+  - Precomputed kernel evaluation path in `Kernel`
+  - Extended probability module with NaN/Inf guards
+  - Parameter validation for precomputed kernels
+  - Helper functions for querying model properties by SVM type
+
+### Changed
+
+- README: comprehensive Phase 6 status update with verification metrics
+- CI workflow: added upstream lock validation, coverage gates
+- Solver output: additional stability checks for edge cases
+- Probability estimation: improved numerical stability for one-class and SVR
+
+### Fixed
+
+- Model I/O: robust header parsing with oversized count guards (continued from v0.5.1)
+- Kernel evaluation: correct precomputed kernel access and bounds checking
+- Probability estimation: handle edge cases with insufficient or degenerate samples
+- Scale CLI: prevent panic on negative feature indices
+
+### Security
+
+- Added SECURITY_AUDIT.md with RustSec audit results (zero findings)
+- Hardened parsing against malicious inputs (oversized headers, negative indices)
+
 ## [0.5.1] - 2026-02-09
 
 ### Fixed
@@ -82,7 +126,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Parameter validation with ν-SVC feasibility check
 - 38 tests
 
-[Unreleased]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.3.0...v0.4.0
