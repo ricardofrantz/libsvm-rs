@@ -104,7 +104,7 @@ jobs:
           key: miri
       - run: cargo +nightly miri test --lib
         env:
-          MIRIFLAGS: "-Zmiri-strict-provenance -Zmiri-symbolic-alignment-check"
+          MIRIFLAGS: "-Zmiri-strict-provenance -Zmiri-symbolic-alignment-check -Zmiri-disable-isolation"
 
   coverage:
     name: Code coverage
