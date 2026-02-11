@@ -13,6 +13,16 @@ on:
         required: true
         default: false
         type: boolean
+  workflow_call:
+    inputs:
+      auto_commit:
+        description: "Commit updated benchmark artifacts back to the triggering branch"
+        required: true
+        type: boolean
+      strict_env:
+        description: "Enable strict environment quality checks (recommended for dedicated self-hosted runners)"
+        required: true
+        type: boolean
 
 permissions:
   contents: write
