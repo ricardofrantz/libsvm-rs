@@ -1,0 +1,155 @@
+name: Scientific Demo Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      auto_commit:
+        description: "Commit updated benchmark artifacts back to the triggering branch"
+        required: true
+        default: false
+        type: boolean
+      strict_env:
+        description: "Enable strict environment quality checks (recommended for dedicated self-hosted runners)"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  BENCH_WARMUP: "3"
+  BENCH_RUNS: "20"
+  WASM_WARMUP: "3"
+  WASM_RUNS: "20"
+
+jobs:
+  benchmark:
+    name: Scientific Demo Benchmark
+    runs-on: ${{ inputs.strict_env && 'self-hosted' || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Install Python plotting dependencies
+        run: uv pip install --system numpy matplotlib
+
+      - name: Strict environment checks
+        if: ${{ inputs.strict_env }}
+        run: |
+          set -euo pipefail
+          echo "strict_env=true; validating benchmark environment quality."
+          echo "runner.environment=${{ runner.environment }}"
+          if [[ "${{ runner.environment }}" != "self-hosted" ]]; then
+            echo "strict_env requires a self-hosted runner."
+            exit 1
+          fi
+
+          if [[ -f /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor ]]; then
+            GOV="$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor)"
+            echo "scaling_governor=$GOV"
+            if [[ "$GOV" != "performance" ]]; then
+              echo "Expected scaling governor 'performance' in strict mode."
+              exit 1
+            fi
+          else
+            echo "Missing /sys cpu governor file; cannot guarantee strict environment."
+            exit 1
+          fi
+
+      - name: Run Rust-vs-C benchmark matrix
+        run: python3 scripts/benchmark_compare.py
+
+      - name: Run WASM integration benchmark
+        run: bash examples/integrations/wasm_inference/run.sh
+
+      - name: Rebuild global comparison figure
+        run: python3 examples/common/make_comparison_figure.py --root . --out examples/comparison.png --summary examples/comparison_summary.json --min-runs 3
+
+      - name: Validate generated artifacts
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          expected = [
+              Path("reference/benchmark_results.json"),
+              Path("reference/benchmark_report.md"),
+              Path("examples/integrations/wasm_inference/output/results.json"),
+              Path("examples/integrations/wasm_inference/output/report.md"),
+              Path("examples/integrations/wasm_inference/output/wasm_vs_cpp.png"),
+              Path("examples/comparison.png"),
+              Path("examples/comparison_summary.json"),
+          ]
+          for p in expected:
+              assert p.exists(), f"missing artifact: {p}"
+
+          wasm_payload = json.loads(Path("examples/integrations/wasm_inference/output/results.json").read_text(encoding="utf-8"))
+          rows = wasm_payload.get("results", [])
+          assert len(rows) == 1, f"expected 1 wasm benchmark row, got {len(rows)}"
+          row = rows[0]
+          for op in ("train", "predict"):
+              rust_samples = row["timing"][op]["rust"]["samples_ms"]
+              c_samples = row["timing"][op]["c"]["samples_ms"]
+              assert len(rust_samples) == 20, f"{op} rust sample count mismatch: {len(rust_samples)}"
+              assert len(c_samples) == 20, f"{op} c sample count mismatch: {len(c_samples)}"
+          assert row["metrics"]["prediction_agreement"] >= 0.99, "prediction agreement too low"
+
+          summary = json.loads(Path("examples/comparison_summary.json").read_text(encoding="utf-8"))
+          sources = summary.get("sources", [])
+          assert any(
+              "examples/integrations/wasm_inference/output/results.json" in s
+              for s in sources
+          ), "wasm integration results missing from global summary"
+          print("Scientific demo benchmark artifacts validated.")
+          PY
+
+      - name: Upload benchmark artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: scientific-demo-benchmark
+          path: |
+            reference/benchmark_results.json
+            reference/benchmark_report.md
+            examples/integrations/wasm_inference/output/results.json
+            examples/integrations/wasm_inference/output/report.md
+            examples/integrations/wasm_inference/output/wasm_vs_cpp.png
+            examples/comparison.png
+            examples/comparison_summary.json
+
+      - name: Auto-commit benchmark artifacts
+        if: ${{ inputs.auto_commit }}
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF_TYPE}" != "branch" ]]; then
+            echo "Not on a branch ref; skipping auto-commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add reference/benchmark_results.json
+          git add reference/benchmark_report.md
+          git add examples/integrations/wasm_inference/output/results.json
+          git add examples/integrations/wasm_inference/output/report.md
+          git add examples/integrations/wasm_inference/output/wasm_vs_cpp.png
+          git add examples/comparison.png
+          git add examples/comparison_summary.json
+
+          if git diff --cached --quiet; then
+            echo "No artifact changes to commit."
+            exit 0
+          fi
+
+          git commit -m "chore(benchmark): update scientific demo artifacts"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

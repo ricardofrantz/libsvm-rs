@@ -1,0 +1,30 @@
+{
+  "generated_utc": "2026-02-11T21:44:31Z",
+  "case_count": 41,
+  "sources": [
+    "/Users/rfrantz/Documents/projects/libsvm-rs/examples/integrations/wasm_inference/output/results.json",
+    "/Users/rfrantz/Documents/projects/libsvm-rs/reference/benchmark_results.json"
+  ],
+  "runs": {
+    "train_min": 6,
+    "train_max": 20,
+    "predict_min": 6,
+    "predict_max": 20
+  },
+  "train_ratio": {
+    "median": 1.0159191852825231,
+    "p05": 0.6024272602430163,
+    "p95": 1.1674884998010842,
+    "median_ci95_low": 0.9972595841259384,
+    "median_ci95_high": 1.0494973426394314,
+    "rust_faster_fraction": 0.3902439024390244
+  },
+  "predict_ratio": {
+    "median": 1.0064145913739935,
+    "p05": 0.7478576348022044,
+    "p95": 1.2218270400832327,
+    "median_ci95_low": 0.9721711600556532,
+    "median_ci95_high": 1.0244109485632098,
+    "rust_faster_fraction": 0.4878048780487805
+  }
+}

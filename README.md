@@ -104,6 +104,16 @@ if let Some((label, probs)) = predict_probability(&model, &problem.instances[0])
 }
 ```
 
+### Extended Examples
+
+For structured, runnable example suites see:
+
+- `examples/README.md` — index of all examples
+- `examples/basics/` — minimal starter examples
+- `examples/api/` — persistence, CV/grid-search, Iris workflow
+- `examples/integrations/` — prediction server + wasm inference integrations
+- `examples/scientific/` — benchmark-heavy Rust-vs-C++ demos
+
 ## CLI Usage
 
 The CLI tools accept the same flags as upstream LIBSVM:
@@ -247,6 +257,22 @@ This confirms the drift comes from training numerics, not prediction logic.
 | Performance | `reference/benchmark_results.json`, `reference/benchmark_report.md` |
 | Datasets | `reference/dataset_manifest.json`, `data/generated/` |
 | Security | `SECURITY_AUDIT.md` |
+
+### Rust vs C++ Timing Figure
+
+Global timing comparison figure (train + predict, per-case ratios, and ratio distributions):
+
+![Rust vs C++ timing comparison](examples/comparison.png)
+
+Statistical summary companion:
+- `examples/comparison_summary.json`
+
+To regenerate performance data with stronger statistical confidence before plotting:
+
+```bash
+BENCH_WARMUP=3 BENCH_RUNS=20 python3 scripts/benchmark_compare.py
+python3 examples/common/make_comparison_figure.py --root . --out examples/comparison.png --summary examples/comparison_summary.json
+```
 
 ### Parity Claim
 

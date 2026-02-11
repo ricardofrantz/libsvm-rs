@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [master, main]
+    branches: [master]
   pull_request:
-    branches: [master, main]
+    branches: [master]
 
 env:
   CARGO_TERM_COLOR: always
@@ -128,3 +128,68 @@ jobs:
           path: |
             reference/benchmark_report.md
             reference/benchmark_results.json
+
+  wasm-integration:
+    name: WASM Integration Benchmark
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: astral-sh/setup-uv@v5
+      - name: Install Python plotting dependencies
+        run: uv pip install --system numpy matplotlib
+      - name: Run wasm vs C++ benchmark smoke
+        run: WASM_WARMUP=1 WASM_RUNS=6 bash examples/integrations/wasm_inference/run.sh
+      - name: Validate wasm benchmark outputs
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          out = Path("examples/integrations/wasm_inference/output")
+          results_file = out / "results.json"
+          report_file = out / "report.md"
+          local_plot = out / "wasm_vs_cpp.png"
+          global_plot = Path("examples/comparison.png")
+          global_summary = Path("examples/comparison_summary.json")
+
+          assert results_file.exists(), f"missing {results_file}"
+          assert report_file.exists(), f"missing {report_file}"
+          assert local_plot.exists(), f"missing {local_plot}"
+          assert global_plot.exists(), f"missing {global_plot}"
+          assert global_summary.exists(), f"missing {global_summary}"
+
+          payload = json.loads(results_file.read_text(encoding="utf-8"))
+          rows = payload.get("results", [])
+          assert len(rows) == 1, f"expected 1 result row, got {len(rows)}"
+          row = rows[0]
+          for op in ("train", "predict"):
+            rust_samples = row["timing"][op]["rust"]["samples_ms"]
+            c_samples = row["timing"][op]["c"]["samples_ms"]
+            assert len(rust_samples) == 6, f"{op} rust sample count mismatch: {len(rust_samples)}"
+            assert len(c_samples) == 6, f"{op} c sample count mismatch: {len(c_samples)}"
+          assert row["metrics"]["prediction_agreement"] >= 0.99, "prediction agreement too low"
+
+          summary = json.loads(global_summary.read_text(encoding="utf-8"))
+          sources = summary.get("sources", [])
+          assert any(
+            "examples/integrations/wasm_inference/output/results.json" in s
+            for s in sources
+          ), "wasm integration results not included in global summary"
+          print("WASM integration benchmark outputs validated.")
+          PY
+      - name: Upload wasm benchmark artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-integration-benchmark
+          path: |
+            examples/integrations/wasm_inference/output/results.json
+            examples/integrations/wasm_inference/output/report.md
+            examples/integrations/wasm_inference/output/wasm_vs_cpp.png
+            examples/comparison.png
+            examples/comparison_summary.json

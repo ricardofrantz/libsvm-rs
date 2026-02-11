@@ -1,0 +1,99 @@
+{
+  "metadata": {
+    "generated_utc": "2026-02-11T21:44:29Z",
+    "warmup": 1,
+    "runs": 6,
+    "test_file": "/Users/rfrantz/Documents/projects/libsvm-rs/examples/integrations/wasm_inference/output/tmp/heart_scale.test.svm"
+  },
+  "results": [
+    {
+      "dataset": "heart_scale_wasm",
+      "task": "classification",
+      "train_rows": 180,
+      "test_rows": 90,
+      "svm_type": 0,
+      "kernel": 2,
+      "kernel_name": "rbf",
+      "c_value": 1.0,
+      "gamma": 0.07692307692307693,
+      "runtime": "wasm-nodejs-inprocess",
+      "timing": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              1.212,
+              1.151792,
+              1.130791,
+              1.085375,
+              1.085084,
+              1.075834
+            ],
+            "median_ms": 1.108083,
+            "p95_ms": 1.196948,
+            "mean_ms": 1.123479,
+            "min_ms": 1.075834,
+            "max_ms": 1.212
+          },
+          "c": {
+            "samples_ms": [
+              1.347084,
+              1.255833,
+              1.154208,
+              1.149584,
+              1.190791,
+              1.184875
+            ],
+            "median_ms": 1.187833,
+            "p95_ms": 1.324271,
+            "mean_ms": 1.213729,
+            "min_ms": 1.149584,
+            "max_ms": 1.347084
+          },
+          "rust_over_c_median_ratio": 0.932861
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              0.419458,
+              0.419167,
+              0.427208,
+              0.4225,
+              0.393333,
+              0.344625
+            ],
+            "median_ms": 0.419313,
+            "p95_ms": 0.426031,
+            "mean_ms": 0.404382,
+            "min_ms": 0.344625,
+            "max_ms": 0.427208
+          },
+          "c": {
+            "samples_ms": [
+              0.524625,
+              0.47925,
+              0.465333,
+              0.504959,
+              4.571,
+              0.469417
+            ],
+            "median_ms": 0.492105,
+            "p95_ms": 3.559406,
+            "mean_ms": 1.169097,
+            "min_ms": 0.465333,
+            "max_ms": 4.571
+          },
+          "rust_over_c_median_ratio": 0.85208
+        }
+      },
+      "metrics": {
+        "rust_accuracy": 0.8444444444444444,
+        "c_accuracy": 0.8444444444444444,
+        "prediction_agreement": 1.0
+      },
+      "notes": {
+        "rust_impl": "Rust -> WASM via wasm-bindgen, timed inside WASM function",
+        "c_impl": "C++ LIBSVM in-process harness linked to svm.cpp"
+      }
+    }
+  ]
+}
