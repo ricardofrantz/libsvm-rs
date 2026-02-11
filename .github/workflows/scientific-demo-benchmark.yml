@@ -51,7 +51,12 @@ jobs:
       - uses: astral-sh/setup-uv@v5
 
       - name: Install Python plotting dependencies
-        run: uv pip install --system numpy matplotlib
+        run: |
+          uv venv .venv
+          . .venv/bin/activate
+          uv pip install numpy matplotlib
+          echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
 
       - name: Strict environment checks
         if: ${{ inputs.strict_env }}
