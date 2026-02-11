@@ -1,0 +1,48 @@
+key probB[1]: ref=-0.03356369805777047 rust=-0.01814558985395756 diff=1.542e-02 (rel=4.594e-01) > threshold=5.000e-03
+WARN: Probability model header mismatch heart_scale.precomputed -s 0 -t 4
+key probB[1]: ref=-0.033563698057770576 rust=-0.01814558985395756 diff=1.542e-02 (rel=4.594e-01) > threshold=5.000e-03
+WARN: Probability model header mismatch heart_scale -s 0 -t 0
+key probB[1]: ref=0.01688279719132909 rust=0.023699981751315304 diff=6.817e-03 (rel=2.876e-01) > threshold=5.000e-03
+WARN: Probability model header mismatch heart_scale -s 0 -t 1
+key probB[1]: ref=-0.11164460251036841 rust=-0.09435816412111034 diff=1.729e-02 (rel=1.548e-01) > threshold=6.699e-03
+WARN: Probability model header mismatch heart_scale -s 0 -t 2
+key probA[1]: ref=-1.853322861500795 rust=-1.9918700922841575 diff=1.385e-01 (rel=6.956e-02) > threshold=1.195e-01
+WARN: Probability model header mismatch heart_scale -s 1 -t 1
+line 162, col 1: predicted label mismatch ref=1.0 rust=-1.0
+WARN: Probability output mismatch heart_scale -s 1 -t 2
+line 62, col 1: predicted label mismatch ref=-1.0 rust=1.0
+WARN: Probability output mismatch heart_scale -s 1 -t 3
+key probB[1]: ref=-0.12299449078913458 rust=-0.13530351324504344 diff=1.231e-02 (rel=9.097e-02) > threshold=8.118e-03
+WARN: Probability model header mismatch heart_scale -s 1 -t 3
+key probB[1]: ref=-0.07848305234568505 rust=-0.18948606756988107 diff=1.110e-01 (rel=5.858e-01) > threshold=1.137e-02
+WARN: Probability model header mismatch iris.scale.precomputed -s 0 -t 4
+line 80, col 4: ref=0.0928106 rust=0.123928 diff=3.112e-02 (rel=2.511e-01) > threshold=3.098e-02
+WARN: Probability output mismatch iris.scale.precomputed -s 1 -t 4
+key probA[3]: ref=-4.246891612169005 rust=-3.898913193230796 diff=3.480e-01 (rel=8.194e-02) > threshold=2.548e-01
+WARN: Probability model header mismatch iris.scale.precomputed -s 1 -t 4
+key probB[1]: ref=-0.07848305234568487 rust=-0.18948606756988107 diff=1.110e-01 (rel=5.858e-01) > threshold=1.137e-02
+WARN: Probability model header mismatch iris.scale -s 0 -t 0
+line 102, col 3: ref=0.295785 rust=0.416416 diff=1.206e-01 (rel=2.897e-01) > threshold=1.041e-01
+WARN: Probability output mismatch iris.scale -s 0 -t 1
+key probA[3]: ref=-1.5361044875588463 rust=-0.8280679890002646 diff=7.080e-01 (rel=4.609e-01) > threshold=9.217e-02
+WARN: Probability model header mismatch iris.scale -s 0 -t 1
+key probB[1]: ref=-0.023513811495332024 rust=-0.061133514680350255 diff=3.762e-02 (rel=6.154e-01) > threshold=5.000e-03
+WARN: Probability model header mismatch iris.scale -s 0 -t 2
+key probA[3]: ref=-4.749689597586093 rust=-4.321419848027828 diff=4.283e-01 (rel=9.017e-02) > threshold=2.850e-01
+WARN: Probability model header mismatch iris.scale -s 0 -t 3
+line 80, col 4: ref=0.0928106 rust=0.123928 diff=3.112e-02 (rel=2.511e-01) > threshold=3.098e-02
+WARN: Probability output mismatch iris.scale -s 1 -t 0
+key probA[3]: ref=-4.246891612169006 rust=-3.898913193230796 diff=3.480e-01 (rel=8.194e-02) > threshold=2.548e-01
+WARN: Probability model header mismatch iris.scale -s 1 -t 0
+line 128, col 1: predicted label mismatch ref=2.0 rust=3.0
+WARN: Probability output mismatch iris.scale -s 1 -t 1
+key probB[1]: ref=-0.703246598582568 rust=-0.6258128964802353 diff=7.743e-02 (rel=1.101e-01) > threshold=4.219e-02
+WARN: Probability model header mismatch iris.scale -s 1 -t 1
+line 108, col 1: predicted label mismatch ref=2.0 rust=3.0
+WARN: Probability output mismatch iris.scale -s 1 -t 2
+key probB[1]: ref=0.15177737333974464 rust=0.11792851974693302 diff=3.385e-02 (rel=2.230e-01) > threshold=9.107e-03
+WARN: Probability model header mismatch iris.scale -s 1 -t 2
+line 80, col 4: ref=0.095615 rust=0.128116 diff=3.250e-02 (rel=2.537e-01) > threshold=3.203e-02
+WARN: Probability output mismatch iris.scale -s 1 -t 3
+key probA[3]: ref=-4.236491512881262 rust=-3.8826742633813116 diff=3.538e-01 (rel=8.352e-02) > threshold=2.542e-01
+WARN: Probability model header mismatch iris.scale -s 1 -t 3

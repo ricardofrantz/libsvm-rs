@@ -94,15 +94,9 @@ fn sparse_sq_dist(x: &[SvmNode], y: &[SvmNode]) -> f64 {
 pub fn k_function(x: &[SvmNode], y: &[SvmNode], param: &SvmParameter) -> f64 {
     match param.kernel_type {
         KernelType::Linear => dot(x, y),
-        KernelType::Polynomial => {
-            powi(param.gamma * dot(x, y) + param.coef0, param.degree)
-        }
-        KernelType::Rbf => {
-            (-param.gamma * sparse_sq_dist(x, y)).exp()
-        }
-        KernelType::Sigmoid => {
-            (param.gamma * dot(x, y) + param.coef0).tanh()
-        }
+        KernelType::Polynomial => powi(param.gamma * dot(x, y) + param.coef0, param.degree),
+        KernelType::Rbf => (-param.gamma * sparse_sq_dist(x, y)).exp(),
+        KernelType::Sigmoid => (param.gamma * dot(x, y) + param.coef0).tanh(),
         KernelType::Precomputed => {
             // For precomputed kernels, x[y[0].value as index] gives the value.
             // y[0].value is the column index (1-based SV index).
@@ -157,18 +151,17 @@ impl<'a> Kernel<'a> {
     pub fn evaluate(&self, i: usize, j: usize) -> f64 {
         match self.kernel_type {
             KernelType::Linear => dot(self.x[i], self.x[j]),
-            KernelType::Polynomial => {
-                powi(self.gamma * dot(self.x[i], self.x[j]) + self.coef0, self.degree)
-            }
+            KernelType::Polynomial => powi(
+                self.gamma * dot(self.x[i], self.x[j]) + self.coef0,
+                self.degree,
+            ),
             KernelType::Rbf => {
                 // Use precomputed x_square: ‖x_i - x_j‖² = x_sq[i] + x_sq[j] - 2*dot(x_i, x_j)
                 let sq = self.x_square.as_ref().unwrap();
                 let val = sq[i] + sq[j] - 2.0 * dot(self.x[i], self.x[j]);
                 (-self.gamma * val).exp()
             }
-            KernelType::Sigmoid => {
-                (self.gamma * dot(self.x[i], self.x[j]) + self.coef0).tanh()
-            }
+            KernelType::Sigmoid => (self.gamma * dot(self.x[i], self.x[j]) + self.coef0).tanh(),
             KernelType::Precomputed => {
                 let col = self.x[j][0].value as usize;
                 self.x[i].get(col).map_or(0.0, |n| n.value)
@@ -287,6 +280,25 @@ mod tests {
     }
 
     #[test]
+    fn kernel_precomputed() {
+        // Precomputed rows use 0:sample_id followed by 1..l kernel values.
+        let x = make_nodes(&[(0, 1.0), (1, 1.5), (2, 2.5)]);
+        let y = make_nodes(&[(0, 2.0), (1, 1.5), (2, 2.5)]);
+        let param = SvmParameter {
+            kernel_type: KernelType::Precomputed,
+            ..Default::default()
+        };
+
+        // y[0].value = 2 => take x[2] => 2.5
+        assert!((k_function(&x, &y, &param) - 2.5).abs() < 1e-15);
+
+        let data = vec![x.clone(), y.clone()];
+        let kern = Kernel::new(&data, &param);
+        // evaluate(0,1) uses column index from row 1 sample id (2)
+        assert!((kern.evaluate(0, 1) - 2.5).abs() < 1e-15);
+    }
+
+    #[test]
     fn kernel_struct_matches_standalone() {
         let data = vec![
             make_nodes(&[(1, 0.5), (3, -1.0)]),
@@ -309,7 +321,10 @@ mod tests {
                 assert!(
                     (via_struct - via_func).abs() < 1e-15,
                     "mismatch at ({},{}): {} vs {}",
-                    i, j, via_struct, via_func
+                    i,
+                    j,
+                    via_struct,
+                    via_func
                 );
             }
         }

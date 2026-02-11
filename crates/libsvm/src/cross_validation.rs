@@ -238,7 +238,12 @@ mod tests {
     fn cross_validation_basic() {
         let labels = vec![1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0];
         let instances: Vec<Vec<SvmNode>> = (0..10)
-            .map(|i| vec![SvmNode { index: 1, value: i as f64 * 0.1 }])
+            .map(|i| {
+                vec![SvmNode {
+                    index: 1,
+                    value: i as f64 * 0.1,
+                }]
+            })
             .collect();
 
         let prob = SvmProblem { labels, instances };

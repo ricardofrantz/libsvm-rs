@@ -1,6 +1,6 @@
 use libsvm_rs::io::{format_17g, format_g, load_model, load_problem};
 use libsvm_rs::predict::{predict, predict_probability};
-use libsvm_rs::{SvmModel, SvmType};
+use libsvm_rs::{svm_check_probability_model, SvmType};
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
@@ -16,16 +16,6 @@ options:
 "
     );
     process::exit(1);
-}
-
-fn check_probability_model(model: &SvmModel) -> bool {
-    match model.param.svm_type {
-        SvmType::CSvc | SvmType::NuSvc => {
-            !model.prob_a.is_empty() && !model.prob_b.is_empty()
-        }
-        SvmType::EpsilonSvr | SvmType::NuSvr => !model.prob_a.is_empty(),
-        SvmType::OneClass => !model.prob_density_marks.is_empty(),
-    }
 }
 
 fn main() {
@@ -85,11 +75,11 @@ fn main() {
 
     // Check probability support
     if predict_prob {
-        if !check_probability_model(&model) {
-            eprintln!("Model does not support probabiliy estimates");
+        if !svm_check_probability_model(&model) {
+            eprintln!("Model does not support probability estimates");
             process::exit(1);
         }
-    } else if check_probability_model(&model) && !quiet {
+    } else if svm_check_probability_model(&model) && !quiet {
         eprintln!("Model supports probability estimates, but disabled in prediction.");
     }
 
@@ -135,8 +125,7 @@ fn main() {
     let mut correct = 0usize;
     let mut total = 0usize;
     let mut error = 0.0;
-    let (mut sump, mut sumt, mut sumpp, mut sumtt, mut sumpt) =
-        (0.0, 0.0, 0.0, 0.0, 0.0);
+    let (mut sump, mut sumt, mut sumpp, mut sumtt, mut sumpt) = (0.0, 0.0, 0.0, 0.0, 0.0);
 
     let use_prob_output =
         predict_prob && matches!(svm_type, SvmType::CSvc | SvmType::NuSvc | SvmType::OneClass);
@@ -145,8 +134,8 @@ fn main() {
         let target_label = problem.labels[idx];
 
         let predict_label = if use_prob_output {
-            let (label, probs) = predict_probability(&model, instance)
-                .expect("probability prediction failed");
+            let (label, probs) =
+                predict_probability(&model, instance).expect("probability prediction failed");
             write!(out, "{}", format_g(label)).unwrap();
             for p in &probs {
                 write!(out, " {}", format_g(*p)).unwrap();
@@ -174,10 +163,7 @@ fn main() {
     if !quiet {
         if matches!(svm_type, SvmType::EpsilonSvr | SvmType::NuSvr) {
             let n = total as f64;
-            eprintln!(
-                "Mean squared error = {} (regression)",
-                format_g(error / n)
-            );
+            eprintln!("Mean squared error = {} (regression)", format_g(error / n));
             let r2 = ((n * sumpt - sump * sumt) * (n * sumpt - sump * sumt))
                 / ((n * sumpp - sump * sump) * (n * sumtt - sumt * sumt));
             eprintln!(

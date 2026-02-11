@@ -1,0 +1,3664 @@
+{
+  "metadata": {
+    "generated_utc": "2026-02-11T06:47:30Z",
+    "warmup_runs": 0,
+    "measured_runs": 1,
+    "case_count": 40
+  },
+  "aggregate": {
+    "train": {
+      "cases": 40.0,
+      "rust_median_of_medians_ms": 5.960875,
+      "c_median_of_medians_ms": 5.773167,
+      "rust_over_c_median_ratio": 1.007645,
+      "rust_over_c_p95_ratio": 1.427424,
+      "rust_over_c_max_ratio": 1.646429
+    },
+    "predict": {
+      "cases": 40.0,
+      "rust_median_of_medians_ms": 4.789542,
+      "c_median_of_medians_ms": 4.439396,
+      "rust_over_c_median_ratio": 0.981062,
+      "rust_over_c_p95_ratio": 1.252689,
+      "rust_over_c_max_ratio": 1.751803
+    },
+    "train_probability": {
+      "cases": 30.0,
+      "rust_median_of_medians_ms": 10.732209,
+      "c_median_of_medians_ms": 9.167063,
+      "rust_over_c_median_ratio": 1.165347,
+      "rust_over_c_p95_ratio": 1.32899,
+      "rust_over_c_max_ratio": 1.435387
+    },
+    "predict_probability": {
+      "cases": 30.0,
+      "rust_median_of_medians_ms": 5.642917,
+      "c_median_of_medians_ms": 5.397459,
+      "rust_over_c_median_ratio": 0.992212,
+      "rust_over_c_p95_ratio": 1.422167,
+      "rust_over_c_max_ratio": 1.891371
+    }
+  },
+  "cases": [
+    {
+      "case": {
+        "id": "s0_t0_heart_scale",
+        "svm_type": 0,
+        "kernel": 0,
+        "dataset": "heart_scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              6.240959
+            ],
+            "median_ms": 6.240959,
+            "p95_ms": 6.240959,
+            "mean_ms": 6.240959,
+            "min_ms": 6.240959,
+            "max_ms": 6.240959
+          },
+          "c": {
+            "samples_ms": [
+              36.048042
+            ],
+            "median_ms": 36.048042,
+            "p95_ms": 36.048042,
+            "mean_ms": 36.048042,
+            "min_ms": 36.048042,
+            "max_ms": 36.048042
+          },
+          "rust_over_c_median_ratio": 0.173129
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              5.161375
+            ],
+            "median_ms": 5.161375,
+            "p95_ms": 5.161375,
+            "mean_ms": 5.161375,
+            "min_ms": 5.161375,
+            "max_ms": 5.161375
+          },
+          "c": {
+            "samples_ms": [
+              4.640042
+            ],
+            "median_ms": 4.640042,
+            "p95_ms": 4.640042,
+            "mean_ms": 4.640042,
+            "min_ms": 4.640042,
+            "max_ms": 4.640042
+          },
+          "rust_over_c_median_ratio": 1.112355
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              12.3485
+            ],
+            "median_ms": 12.3485,
+            "p95_ms": 12.3485,
+            "mean_ms": 12.3485,
+            "min_ms": 12.3485,
+            "max_ms": 12.3485
+          },
+          "c": {
+            "samples_ms": [
+              9.081375
+            ],
+            "median_ms": 9.081375,
+            "p95_ms": 9.081375,
+            "mean_ms": 9.081375,
+            "min_ms": 9.081375,
+            "max_ms": 9.081375
+          },
+          "rust_over_c_median_ratio": 1.359761
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              5.037875
+            ],
+            "median_ms": 5.037875,
+            "p95_ms": 5.037875,
+            "mean_ms": 5.037875,
+            "min_ms": 5.037875,
+            "max_ms": 5.037875
+          },
+          "c": {
+            "samples_ms": [
+              4.550583
+            ],
+            "median_ms": 4.550583,
+            "p95_ms": 4.550583,
+            "mean_ms": 4.550583,
+            "min_ms": 4.550583,
+            "max_ms": 4.550583
+          },
+          "rust_over_c_median_ratio": 1.107083
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s0_t0_iris_scale",
+        "svm_type": 0,
+        "kernel": 0,
+        "dataset": "iris.scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              4.171458
+            ],
+            "median_ms": 4.171458,
+            "p95_ms": 4.171458,
+            "mean_ms": 4.171458,
+            "min_ms": 4.171458,
+            "max_ms": 4.171458
+          },
+          "c": {
+            "samples_ms": [
+              4.885458
+            ],
+            "median_ms": 4.885458,
+            "p95_ms": 4.885458,
+            "mean_ms": 4.885458,
+            "min_ms": 4.885458,
+            "max_ms": 4.885458
+          },
+          "rust_over_c_median_ratio": 0.853852
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              3.564708
+            ],
+            "median_ms": 3.564708,
+            "p95_ms": 3.564708,
+            "mean_ms": 3.564708,
+            "min_ms": 3.564708,
+            "max_ms": 3.564708
+          },
+          "c": {
+            "samples_ms": [
+              3.094583
+            ],
+            "median_ms": 3.094583,
+            "p95_ms": 3.094583,
+            "mean_ms": 3.094583,
+            "min_ms": 3.094583,
+            "max_ms": 3.094583
+          },
+          "rust_over_c_median_ratio": 1.151919
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              4.604167
+            ],
+            "median_ms": 4.604167,
+            "p95_ms": 4.604167,
+            "mean_ms": 4.604167,
+            "min_ms": 4.604167,
+            "max_ms": 4.604167
+          },
+          "c": {
+            "samples_ms": [
+              3.977291
+            ],
+            "median_ms": 3.977291,
+            "p95_ms": 3.977291,
+            "mean_ms": 3.977291,
+            "min_ms": 3.977291,
+            "max_ms": 3.977291
+          },
+          "rust_over_c_median_ratio": 1.157614
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              3.669625
+            ],
+            "median_ms": 3.669625,
+            "p95_ms": 3.669625,
+            "mean_ms": 3.669625,
+            "min_ms": 3.669625,
+            "max_ms": 3.669625
+          },
+          "c": {
+            "samples_ms": [
+              3.663958
+            ],
+            "median_ms": 3.663958,
+            "p95_ms": 3.663958,
+            "mean_ms": 3.663958,
+            "min_ms": 3.663958,
+            "max_ms": 3.663958
+          },
+          "rust_over_c_median_ratio": 1.001547
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s1_t0_heart_scale",
+        "svm_type": 1,
+        "kernel": 0,
+        "dataset": "heart_scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              5.351375
+            ],
+            "median_ms": 5.351375,
+            "p95_ms": 5.351375,
+            "mean_ms": 5.351375,
+            "min_ms": 5.351375,
+            "max_ms": 5.351375
+          },
+          "c": {
+            "samples_ms": [
+              4.732459
+            ],
+            "median_ms": 4.732459,
+            "p95_ms": 4.732459,
+            "mean_ms": 4.732459,
+            "min_ms": 4.732459,
+            "max_ms": 4.732459
+          },
+          "rust_over_c_median_ratio": 1.130781
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              4.78375
+            ],
+            "median_ms": 4.78375,
+            "p95_ms": 4.78375,
+            "mean_ms": 4.78375,
+            "min_ms": 4.78375,
+            "max_ms": 4.78375
+          },
+          "c": {
+            "samples_ms": [
+              3.841792
+            ],
+            "median_ms": 3.841792,
+            "p95_ms": 3.841792,
+            "mean_ms": 3.841792,
+            "min_ms": 3.841792,
+            "max_ms": 3.841792
+          },
+          "rust_over_c_median_ratio": 1.245187
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              9.298625
+            ],
+            "median_ms": 9.298625,
+            "p95_ms": 9.298625,
+            "mean_ms": 9.298625,
+            "min_ms": 9.298625,
+            "max_ms": 9.298625
+          },
+          "c": {
+            "samples_ms": [
+              8.999708
+            ],
+            "median_ms": 8.999708,
+            "p95_ms": 8.999708,
+            "mean_ms": 8.999708,
+            "min_ms": 8.999708,
+            "max_ms": 8.999708
+          },
+          "rust_over_c_median_ratio": 1.033214
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              5.047125
+            ],
+            "median_ms": 5.047125,
+            "p95_ms": 5.047125,
+            "mean_ms": 5.047125,
+            "min_ms": 5.047125,
+            "max_ms": 5.047125
+          },
+          "c": {
+            "samples_ms": [
+              4.455833
+            ],
+            "median_ms": 4.455833,
+            "p95_ms": 4.455833,
+            "mean_ms": 4.455833,
+            "min_ms": 4.455833,
+            "max_ms": 4.455833
+          },
+          "rust_over_c_median_ratio": 1.132701
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s1_t0_iris_scale",
+        "svm_type": 1,
+        "kernel": 0,
+        "dataset": "iris.scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              4.284625
+            ],
+            "median_ms": 4.284625,
+            "p95_ms": 4.284625,
+            "mean_ms": 4.284625,
+            "min_ms": 4.284625,
+            "max_ms": 4.284625
+          },
+          "c": {
+            "samples_ms": [
+              4.11425
+            ],
+            "median_ms": 4.11425,
+            "p95_ms": 4.11425,
+            "mean_ms": 4.11425,
+            "min_ms": 4.11425,
+            "max_ms": 4.11425
+          },
+          "rust_over_c_median_ratio": 1.041411
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              7.093417
+            ],
+            "median_ms": 7.093417,
+            "p95_ms": 7.093417,
+            "mean_ms": 7.093417,
+            "min_ms": 7.093417,
+            "max_ms": 7.093417
+          },
+          "c": {
+            "samples_ms": [
+              4.049209
+            ],
+            "median_ms": 4.049209,
+            "p95_ms": 4.049209,
+            "mean_ms": 4.049209,
+            "min_ms": 4.049209,
+            "max_ms": 4.049209
+          },
+          "rust_over_c_median_ratio": 1.751803
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              6.088708
+            ],
+            "median_ms": 6.088708,
+            "p95_ms": 6.088708,
+            "mean_ms": 6.088708,
+            "min_ms": 6.088708,
+            "max_ms": 6.088708
+          },
+          "c": {
+            "samples_ms": [
+              4.922959
+            ],
+            "median_ms": 4.922959,
+            "p95_ms": 4.922959,
+            "mean_ms": 4.922959,
+            "min_ms": 4.922959,
+            "max_ms": 4.922959
+          },
+          "rust_over_c_median_ratio": 1.236798
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              4.542625
+            ],
+            "median_ms": 4.542625,
+            "p95_ms": 4.542625,
+            "mean_ms": 4.542625,
+            "min_ms": 4.542625,
+            "max_ms": 4.542625
+          },
+          "c": {
+            "samples_ms": [
+              3.584375
+            ],
+            "median_ms": 3.584375,
+            "p95_ms": 3.584375,
+            "mean_ms": 3.584375,
+            "min_ms": 3.584375,
+            "max_ms": 3.584375
+          },
+          "rust_over_c_median_ratio": 1.267341
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s2_t0_heart_scale",
+        "svm_type": 2,
+        "kernel": 0,
+        "dataset": "heart_scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              6.831125
+            ],
+            "median_ms": 6.831125,
+            "p95_ms": 6.831125,
+            "mean_ms": 6.831125,
+            "min_ms": 6.831125,
+            "max_ms": 6.831125
+          },
+          "c": {
+            "samples_ms": [
+              4.455417
+            ],
+            "median_ms": 4.455417,
+            "p95_ms": 4.455417,
+            "mean_ms": 4.455417,
+            "min_ms": 4.455417,
+            "max_ms": 4.455417
+          },
+          "rust_over_c_median_ratio": 1.533218
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              4.331833
+            ],
+            "median_ms": 4.331833,
+            "p95_ms": 4.331833,
+            "mean_ms": 4.331833,
+            "min_ms": 4.331833,
+            "max_ms": 4.331833
+          },
+          "c": {
+            "samples_ms": [
+              3.647334
+            ],
+            "median_ms": 3.647334,
+            "p95_ms": 3.647334,
+            "mean_ms": 3.647334,
+            "min_ms": 3.647334,
+            "max_ms": 3.647334
+          },
+          "rust_over_c_median_ratio": 1.187671
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s2_t0_iris_scale",
+        "svm_type": 2,
+        "kernel": 0,
+        "dataset": "iris.scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              3.947375
+            ],
+            "median_ms": 3.947375,
+            "p95_ms": 3.947375,
+            "mean_ms": 3.947375,
+            "min_ms": 3.947375,
+            "max_ms": 3.947375
+          },
+          "c": {
+            "samples_ms": [
+              3.345042
+            ],
+            "median_ms": 3.345042,
+            "p95_ms": 3.345042,
+            "mean_ms": 3.345042,
+            "min_ms": 3.345042,
+            "max_ms": 3.345042
+          },
+          "rust_over_c_median_ratio": 1.180067
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              2.8355
+            ],
+            "median_ms": 2.8355,
+            "p95_ms": 2.8355,
+            "mean_ms": 2.8355,
+            "min_ms": 2.8355,
+            "max_ms": 2.8355
+          },
+          "c": {
+            "samples_ms": [
+              4.407875
+            ],
+            "median_ms": 4.407875,
+            "p95_ms": 4.407875,
+            "mean_ms": 4.407875,
+            "min_ms": 4.407875,
+            "max_ms": 4.407875
+          },
+          "rust_over_c_median_ratio": 0.64328
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s3_t0_housing_scale",
+        "svm_type": 3,
+        "kernel": 0,
+        "dataset": "housing_scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              14.449458
+            ],
+            "median_ms": 14.449458,
+            "p95_ms": 14.449458,
+            "mean_ms": 14.449458,
+            "min_ms": 14.449458,
+            "max_ms": 14.449458
+          },
+          "c": {
+            "samples_ms": [
+              15.544208
+            ],
+            "median_ms": 15.544208,
+            "p95_ms": 15.544208,
+            "mean_ms": 15.544208,
+            "min_ms": 15.544208,
+            "max_ms": 15.544208
+          },
+          "rust_over_c_median_ratio": 0.929572
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              7.096042
+            ],
+            "median_ms": 7.096042,
+            "p95_ms": 7.096042,
+            "mean_ms": 7.096042,
+            "min_ms": 7.096042,
+            "max_ms": 7.096042
+          },
+          "c": {
+            "samples_ms": [
+              6.319708
+            ],
+            "median_ms": 6.319708,
+            "p95_ms": 6.319708,
+            "mean_ms": 6.319708,
+            "min_ms": 6.319708,
+            "max_ms": 6.319708
+          },
+          "rust_over_c_median_ratio": 1.122843
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              45.894167
+            ],
+            "median_ms": 45.894167,
+            "p95_ms": 45.894167,
+            "mean_ms": 45.894167,
+            "min_ms": 45.894167,
+            "max_ms": 45.894167
+          },
+          "c": {
+            "samples_ms": [
+              35.538834
+            ],
+            "median_ms": 35.538834,
+            "p95_ms": 35.538834,
+            "mean_ms": 35.538834,
+            "min_ms": 35.538834,
+            "max_ms": 35.538834
+          },
+          "rust_over_c_median_ratio": 1.291381
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              7.116792
+            ],
+            "median_ms": 7.116792,
+            "p95_ms": 7.116792,
+            "mean_ms": 7.116792,
+            "min_ms": 7.116792,
+            "max_ms": 7.116792
+          },
+          "c": {
+            "samples_ms": [
+              6.205458
+            ],
+            "median_ms": 6.205458,
+            "p95_ms": 6.205458,
+            "mean_ms": 6.205458,
+            "min_ms": 6.205458,
+            "max_ms": 6.205458
+          },
+          "rust_over_c_median_ratio": 1.14686
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s4_t0_housing_scale",
+        "svm_type": 4,
+        "kernel": 0,
+        "dataset": "housing_scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              16.496542
+            ],
+            "median_ms": 16.496542,
+            "p95_ms": 16.496542,
+            "mean_ms": 16.496542,
+            "min_ms": 16.496542,
+            "max_ms": 16.496542
+          },
+          "c": {
+            "samples_ms": [
+              12.406875
+            ],
+            "median_ms": 12.406875,
+            "p95_ms": 12.406875,
+            "mean_ms": 12.406875,
+            "min_ms": 12.406875,
+            "max_ms": 12.406875
+          },
+          "rust_over_c_median_ratio": 1.329629
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              5.655792
+            ],
+            "median_ms": 5.655792,
+            "p95_ms": 5.655792,
+            "mean_ms": 5.655792,
+            "min_ms": 5.655792,
+            "max_ms": 5.655792
+          },
+          "c": {
+            "samples_ms": [
+              4.951292
+            ],
+            "median_ms": 4.951292,
+            "p95_ms": 4.951292,
+            "mean_ms": 4.951292,
+            "min_ms": 4.951292,
+            "max_ms": 4.951292
+          },
+          "rust_over_c_median_ratio": 1.142286
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              52.531042
+            ],
+            "median_ms": 52.531042,
+            "p95_ms": 52.531042,
+            "mean_ms": 52.531042,
+            "min_ms": 52.531042,
+            "max_ms": 52.531042
+          },
+          "c": {
+            "samples_ms": [
+              36.597125
+            ],
+            "median_ms": 36.597125,
+            "p95_ms": 36.597125,
+            "mean_ms": 36.597125,
+            "min_ms": 36.597125,
+            "max_ms": 36.597125
+          },
+          "rust_over_c_median_ratio": 1.435387
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              6.016625
+            ],
+            "median_ms": 6.016625,
+            "p95_ms": 6.016625,
+            "mean_ms": 6.016625,
+            "min_ms": 6.016625,
+            "max_ms": 6.016625
+          },
+          "c": {
+            "samples_ms": [
+              5.449417
+            ],
+            "median_ms": 5.449417,
+            "p95_ms": 5.449417,
+            "mean_ms": 5.449417,
+            "min_ms": 5.449417,
+            "max_ms": 5.449417
+          },
+          "rust_over_c_median_ratio": 1.104086
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s0_t1_heart_scale",
+        "svm_type": 0,
+        "kernel": 1,
+        "dataset": "heart_scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              4.97175
+            ],
+            "median_ms": 4.97175,
+            "p95_ms": 4.97175,
+            "mean_ms": 4.97175,
+            "min_ms": 4.97175,
+            "max_ms": 4.97175
+          },
+          "c": {
+            "samples_ms": [
+              4.795917
+            ],
+            "median_ms": 4.795917,
+            "p95_ms": 4.795917,
+            "mean_ms": 4.795917,
+            "min_ms": 4.795917,
+            "max_ms": 4.795917
+          },
+          "rust_over_c_median_ratio": 1.036663
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              4.695167
+            ],
+            "median_ms": 4.695167,
+            "p95_ms": 4.695167,
+            "mean_ms": 4.695167,
+            "min_ms": 4.695167,
+            "max_ms": 4.695167
+          },
+          "c": {
+            "samples_ms": [
+              4.025292
+            ],
+            "median_ms": 4.025292,
+            "p95_ms": 4.025292,
+            "mean_ms": 4.025292,
+            "min_ms": 4.025292,
+            "max_ms": 4.025292
+          },
+          "rust_over_c_median_ratio": 1.166416
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              9.922375
+            ],
+            "median_ms": 9.922375,
+            "p95_ms": 9.922375,
+            "mean_ms": 9.922375,
+            "min_ms": 9.922375,
+            "max_ms": 9.922375
+          },
+          "c": {
+            "samples_ms": [
+              7.896875
+            ],
+            "median_ms": 7.896875,
+            "p95_ms": 7.896875,
+            "mean_ms": 7.896875,
+            "min_ms": 7.896875,
+            "max_ms": 7.896875
+          },
+          "rust_over_c_median_ratio": 1.256494
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              5.35
+            ],
+            "median_ms": 5.35,
+            "p95_ms": 5.35,
+            "mean_ms": 5.35,
+            "min_ms": 5.35,
+            "max_ms": 5.35
+          },
+          "c": {
+            "samples_ms": [
+              7.31325
+            ],
+            "median_ms": 7.31325,
+            "p95_ms": 7.31325,
+            "mean_ms": 7.31325,
+            "min_ms": 7.31325,
+            "max_ms": 7.31325
+          },
+          "rust_over_c_median_ratio": 0.731549
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s0_t1_iris_scale",
+        "svm_type": 0,
+        "kernel": 1,
+        "dataset": "iris.scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              5.005584
+            ],
+            "median_ms": 5.005584,
+            "p95_ms": 5.005584,
+            "mean_ms": 5.005584,
+            "min_ms": 5.005584,
+            "max_ms": 5.005584
+          },
+          "c": {
+            "samples_ms": [
+              3.520458
+            ],
+            "median_ms": 3.520458,
+            "p95_ms": 3.520458,
+            "mean_ms": 3.520458,
+            "min_ms": 3.520458,
+            "max_ms": 3.520458
+          },
+          "rust_over_c_median_ratio": 1.421856
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              3.372666
+            ],
+            "median_ms": 3.372666,
+            "p95_ms": 3.372666,
+            "mean_ms": 3.372666,
+            "min_ms": 3.372666,
+            "max_ms": 3.372666
+          },
+          "c": {
+            "samples_ms": [
+              3.433
+            ],
+            "median_ms": 3.433,
+            "p95_ms": 3.433,
+            "mean_ms": 3.433,
+            "min_ms": 3.433,
+            "max_ms": 3.433
+          },
+          "rust_over_c_median_ratio": 0.982425
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              4.640875
+            ],
+            "median_ms": 4.640875,
+            "p95_ms": 4.640875,
+            "mean_ms": 4.640875,
+            "min_ms": 4.640875,
+            "max_ms": 4.640875
+          },
+          "c": {
+            "samples_ms": [
+              4.11875
+            ],
+            "median_ms": 4.11875,
+            "p95_ms": 4.11875,
+            "mean_ms": 4.11875,
+            "min_ms": 4.11875,
+            "max_ms": 4.11875
+          },
+          "rust_over_c_median_ratio": 1.126768
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              5.889541
+            ],
+            "median_ms": 5.889541,
+            "p95_ms": 5.889541,
+            "mean_ms": 5.889541,
+            "min_ms": 5.889541,
+            "max_ms": 5.889541
+          },
+          "c": {
+            "samples_ms": [
+              3.802542
+            ],
+            "median_ms": 3.802542,
+            "p95_ms": 3.802542,
+            "mean_ms": 3.802542,
+            "min_ms": 3.802542,
+            "max_ms": 3.802542
+          },
+          "rust_over_c_median_ratio": 1.548843
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s1_t1_heart_scale",
+        "svm_type": 1,
+        "kernel": 1,
+        "dataset": "heart_scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              6.71525
+            ],
+            "median_ms": 6.71525,
+            "p95_ms": 6.71525,
+            "mean_ms": 6.71525,
+            "min_ms": 6.71525,
+            "max_ms": 6.71525
+          },
+          "c": {
+            "samples_ms": [
+              5.09975
+            ],
+            "median_ms": 5.09975,
+            "p95_ms": 5.09975,
+            "mean_ms": 5.09975,
+            "min_ms": 5.09975,
+            "max_ms": 5.09975
+          },
+          "rust_over_c_median_ratio": 1.31678
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              4.269333
+            ],
+            "median_ms": 4.269333,
+            "p95_ms": 4.269333,
+            "mean_ms": 4.269333,
+            "min_ms": 4.269333,
+            "max_ms": 4.269333
+          },
+          "c": {
+            "samples_ms": [
+              4.361166
+            ],
+            "median_ms": 4.361166,
+            "p95_ms": 4.361166,
+            "mean_ms": 4.361166,
+            "min_ms": 4.361166,
+            "max_ms": 4.361166
+          },
+          "rust_over_c_median_ratio": 0.978943
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              11.260792
+            ],
+            "median_ms": 11.260792,
+            "p95_ms": 11.260792,
+            "mean_ms": 11.260792,
+            "min_ms": 11.260792,
+            "max_ms": 11.260792
+          },
+          "c": {
+            "samples_ms": [
+              9.131708
+            ],
+            "median_ms": 9.131708,
+            "p95_ms": 9.131708,
+            "mean_ms": 9.131708,
+            "min_ms": 9.131708,
+            "max_ms": 9.131708
+          },
+          "rust_over_c_median_ratio": 1.233153
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              5.163458
+            ],
+            "median_ms": 5.163458,
+            "p95_ms": 5.163458,
+            "mean_ms": 5.163458,
+            "min_ms": 5.163458,
+            "max_ms": 5.163458
+          },
+          "c": {
+            "samples_ms": [
+              4.173833
+            ],
+            "median_ms": 4.173833,
+            "p95_ms": 4.173833,
+            "mean_ms": 4.173833,
+            "min_ms": 4.173833,
+            "max_ms": 4.173833
+          },
+          "rust_over_c_median_ratio": 1.237102
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s1_t1_iris_scale",
+        "svm_type": 1,
+        "kernel": 1,
+        "dataset": "iris.scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              4.345959
+            ],
+            "median_ms": 4.345959,
+            "p95_ms": 4.345959,
+            "mean_ms": 4.345959,
+            "min_ms": 4.345959,
+            "max_ms": 4.345959
+          },
+          "c": {
+            "samples_ms": [
+              3.466
+            ],
+            "median_ms": 3.466,
+            "p95_ms": 3.466,
+            "mean_ms": 3.466,
+            "min_ms": 3.466,
+            "max_ms": 3.466
+          },
+          "rust_over_c_median_ratio": 1.253883
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              3.32875
+            ],
+            "median_ms": 3.32875,
+            "p95_ms": 3.32875,
+            "mean_ms": 3.32875,
+            "min_ms": 3.32875,
+            "max_ms": 3.32875
+          },
+          "c": {
+            "samples_ms": [
+              3.265542
+            ],
+            "median_ms": 3.265542,
+            "p95_ms": 3.265542,
+            "mean_ms": 3.265542,
+            "min_ms": 3.265542,
+            "max_ms": 3.265542
+          },
+          "rust_over_c_median_ratio": 1.019356
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              5.818833
+            ],
+            "median_ms": 5.818833,
+            "p95_ms": 5.818833,
+            "mean_ms": 5.818833,
+            "min_ms": 5.818833,
+            "max_ms": 5.818833
+          },
+          "c": {
+            "samples_ms": [
+              4.925708
+            ],
+            "median_ms": 4.925708,
+            "p95_ms": 4.925708,
+            "mean_ms": 4.925708,
+            "min_ms": 4.925708,
+            "max_ms": 4.925708
+          },
+          "rust_over_c_median_ratio": 1.181319
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              3.856542
+            ],
+            "median_ms": 3.856542,
+            "p95_ms": 3.856542,
+            "mean_ms": 3.856542,
+            "min_ms": 3.856542,
+            "max_ms": 3.856542
+          },
+          "c": {
+            "samples_ms": [
+              4.907209
+            ],
+            "median_ms": 4.907209,
+            "p95_ms": 4.907209,
+            "mean_ms": 4.907209,
+            "min_ms": 4.907209,
+            "max_ms": 4.907209
+          },
+          "rust_over_c_median_ratio": 0.785893
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s2_t1_heart_scale",
+        "svm_type": 2,
+        "kernel": 1,
+        "dataset": "heart_scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              6.757125
+            ],
+            "median_ms": 6.757125,
+            "p95_ms": 6.757125,
+            "mean_ms": 6.757125,
+            "min_ms": 6.757125,
+            "max_ms": 6.757125
+          },
+          "c": {
+            "samples_ms": [
+              6.264167
+            ],
+            "median_ms": 6.264167,
+            "p95_ms": 6.264167,
+            "mean_ms": 6.264167,
+            "min_ms": 6.264167,
+            "max_ms": 6.264167
+          },
+          "rust_over_c_median_ratio": 1.078695
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              4.795333
+            ],
+            "median_ms": 4.795333,
+            "p95_ms": 4.795333,
+            "mean_ms": 4.795333,
+            "min_ms": 4.795333,
+            "max_ms": 4.795333
+          },
+          "c": {
+            "samples_ms": [
+              4.137792
+            ],
+            "median_ms": 4.137792,
+            "p95_ms": 4.137792,
+            "mean_ms": 4.137792,
+            "min_ms": 4.137792,
+            "max_ms": 4.137792
+          },
+          "rust_over_c_median_ratio": 1.158911
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s2_t1_iris_scale",
+        "svm_type": 2,
+        "kernel": 1,
+        "dataset": "iris.scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              3.909709
+            ],
+            "median_ms": 3.909709,
+            "p95_ms": 3.909709,
+            "mean_ms": 3.909709,
+            "min_ms": 3.909709,
+            "max_ms": 3.909709
+          },
+          "c": {
+            "samples_ms": [
+              4.048833
+            ],
+            "median_ms": 4.048833,
+            "p95_ms": 4.048833,
+            "mean_ms": 4.048833,
+            "min_ms": 4.048833,
+            "max_ms": 4.048833
+          },
+          "rust_over_c_median_ratio": 0.965638
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              3.520166
+            ],
+            "median_ms": 3.520166,
+            "p95_ms": 3.520166,
+            "mean_ms": 3.520166,
+            "min_ms": 3.520166,
+            "max_ms": 3.520166
+          },
+          "c": {
+            "samples_ms": [
+              3.693708
+            ],
+            "median_ms": 3.693708,
+            "p95_ms": 3.693708,
+            "mean_ms": 3.693708,
+            "min_ms": 3.693708,
+            "max_ms": 3.693708
+          },
+          "rust_over_c_median_ratio": 0.953017
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s3_t1_housing_scale",
+        "svm_type": 3,
+        "kernel": 1,
+        "dataset": "housing_scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              11.097042
+            ],
+            "median_ms": 11.097042,
+            "p95_ms": 11.097042,
+            "mean_ms": 11.097042,
+            "min_ms": 11.097042,
+            "max_ms": 11.097042
+          },
+          "c": {
+            "samples_ms": [
+              10.117917
+            ],
+            "median_ms": 10.117917,
+            "p95_ms": 10.117917,
+            "mean_ms": 10.117917,
+            "min_ms": 10.117917,
+            "max_ms": 10.117917
+          },
+          "rust_over_c_median_ratio": 1.096771
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              6.803667
+            ],
+            "median_ms": 6.803667,
+            "p95_ms": 6.803667,
+            "mean_ms": 6.803667,
+            "min_ms": 6.803667,
+            "max_ms": 6.803667
+          },
+          "c": {
+            "samples_ms": [
+              6.982
+            ],
+            "median_ms": 6.982,
+            "p95_ms": 6.982,
+            "mean_ms": 6.982,
+            "min_ms": 6.982,
+            "max_ms": 6.982
+          },
+          "rust_over_c_median_ratio": 0.974458
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              33.432167
+            ],
+            "median_ms": 33.432167,
+            "p95_ms": 33.432167,
+            "mean_ms": 33.432167,
+            "min_ms": 33.432167,
+            "max_ms": 33.432167
+          },
+          "c": {
+            "samples_ms": [
+              26.666625
+            ],
+            "median_ms": 26.666625,
+            "p95_ms": 26.666625,
+            "mean_ms": 26.666625,
+            "min_ms": 26.666625,
+            "max_ms": 26.666625
+          },
+          "rust_over_c_median_ratio": 1.253708
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              7.182125
+            ],
+            "median_ms": 7.182125,
+            "p95_ms": 7.182125,
+            "mean_ms": 7.182125,
+            "min_ms": 7.182125,
+            "max_ms": 7.182125
+          },
+          "c": {
+            "samples_ms": [
+              7.16875
+            ],
+            "median_ms": 7.16875,
+            "p95_ms": 7.16875,
+            "mean_ms": 7.16875,
+            "min_ms": 7.16875,
+            "max_ms": 7.16875
+          },
+          "rust_over_c_median_ratio": 1.001866
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s4_t1_housing_scale",
+        "svm_type": 4,
+        "kernel": 1,
+        "dataset": "housing_scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              10.322667
+            ],
+            "median_ms": 10.322667,
+            "p95_ms": 10.322667,
+            "mean_ms": 10.322667,
+            "min_ms": 10.322667,
+            "max_ms": 10.322667
+          },
+          "c": {
+            "samples_ms": [
+              9.561834
+            ],
+            "median_ms": 9.561834,
+            "p95_ms": 9.561834,
+            "mean_ms": 9.561834,
+            "min_ms": 9.561834,
+            "max_ms": 9.561834
+          },
+          "rust_over_c_median_ratio": 1.07957
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              8.081792
+            ],
+            "median_ms": 8.081792,
+            "p95_ms": 8.081792,
+            "mean_ms": 8.081792,
+            "min_ms": 8.081792,
+            "max_ms": 8.081792
+          },
+          "c": {
+            "samples_ms": [
+              7.537167
+            ],
+            "median_ms": 7.537167,
+            "p95_ms": 7.537167,
+            "mean_ms": 7.537167,
+            "min_ms": 7.537167,
+            "max_ms": 7.537167
+          },
+          "rust_over_c_median_ratio": 1.072259
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              28.065167
+            ],
+            "median_ms": 28.065167,
+            "p95_ms": 28.065167,
+            "mean_ms": 28.065167,
+            "min_ms": 28.065167,
+            "max_ms": 28.065167
+          },
+          "c": {
+            "samples_ms": [
+              22.145583
+            ],
+            "median_ms": 22.145583,
+            "p95_ms": 22.145583,
+            "mean_ms": 22.145583,
+            "min_ms": 22.145583,
+            "max_ms": 22.145583
+          },
+          "rust_over_c_median_ratio": 1.267303
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              6.190666
+            ],
+            "median_ms": 6.190666,
+            "p95_ms": 6.190666,
+            "mean_ms": 6.190666,
+            "min_ms": 6.190666,
+            "max_ms": 6.190666
+          },
+          "c": {
+            "samples_ms": [
+              5.700667
+            ],
+            "median_ms": 5.700667,
+            "p95_ms": 5.700667,
+            "mean_ms": 5.700667,
+            "min_ms": 5.700667,
+            "max_ms": 5.700667
+          },
+          "rust_over_c_median_ratio": 1.085955
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s0_t2_heart_scale",
+        "svm_type": 0,
+        "kernel": 2,
+        "dataset": "heart_scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              5.684792
+            ],
+            "median_ms": 5.684792,
+            "p95_ms": 5.684792,
+            "mean_ms": 5.684792,
+            "min_ms": 5.684792,
+            "max_ms": 5.684792
+          },
+          "c": {
+            "samples_ms": [
+              5.755125
+            ],
+            "median_ms": 5.755125,
+            "p95_ms": 5.755125,
+            "mean_ms": 5.755125,
+            "min_ms": 5.755125,
+            "max_ms": 5.755125
+          },
+          "rust_over_c_median_ratio": 0.987779
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              4.648708
+            ],
+            "median_ms": 4.648708,
+            "p95_ms": 4.648708,
+            "mean_ms": 4.648708,
+            "min_ms": 4.648708,
+            "max_ms": 4.648708
+          },
+          "c": {
+            "samples_ms": [
+              4.43675
+            ],
+            "median_ms": 4.43675,
+            "p95_ms": 4.43675,
+            "mean_ms": 4.43675,
+            "min_ms": 4.43675,
+            "max_ms": 4.43675
+          },
+          "rust_over_c_median_ratio": 1.047773
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              9.207792
+            ],
+            "median_ms": 9.207792,
+            "p95_ms": 9.207792,
+            "mean_ms": 9.207792,
+            "min_ms": 9.207792,
+            "max_ms": 9.207792
+          },
+          "c": {
+            "samples_ms": [
+              7.84925
+            ],
+            "median_ms": 7.84925,
+            "p95_ms": 7.84925,
+            "mean_ms": 7.84925,
+            "min_ms": 7.84925,
+            "max_ms": 7.84925
+          },
+          "rust_over_c_median_ratio": 1.173079
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              8.073
+            ],
+            "median_ms": 8.073,
+            "p95_ms": 8.073,
+            "mean_ms": 8.073,
+            "min_ms": 8.073,
+            "max_ms": 8.073
+          },
+          "c": {
+            "samples_ms": [
+              4.268333
+            ],
+            "median_ms": 4.268333,
+            "p95_ms": 4.268333,
+            "mean_ms": 4.268333,
+            "min_ms": 4.268333,
+            "max_ms": 4.268333
+          },
+          "rust_over_c_median_ratio": 1.891371
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s0_t2_iris_scale",
+        "svm_type": 0,
+        "kernel": 2,
+        "dataset": "iris.scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              3.338792
+            ],
+            "median_ms": 3.338792,
+            "p95_ms": 3.338792,
+            "mean_ms": 3.338792,
+            "min_ms": 3.338792,
+            "max_ms": 3.338792
+          },
+          "c": {
+            "samples_ms": [
+              3.176917
+            ],
+            "median_ms": 3.176917,
+            "p95_ms": 3.176917,
+            "mean_ms": 3.176917,
+            "min_ms": 3.176917,
+            "max_ms": 3.176917
+          },
+          "rust_over_c_median_ratio": 1.050953
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              3.41325
+            ],
+            "median_ms": 3.41325,
+            "p95_ms": 3.41325,
+            "mean_ms": 3.41325,
+            "min_ms": 3.41325,
+            "max_ms": 3.41325
+          },
+          "c": {
+            "samples_ms": [
+              3.514792
+            ],
+            "median_ms": 3.514792,
+            "p95_ms": 3.514792,
+            "mean_ms": 3.514792,
+            "min_ms": 3.514792,
+            "max_ms": 3.514792
+          },
+          "rust_over_c_median_ratio": 0.97111
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              4.451458
+            ],
+            "median_ms": 4.451458,
+            "p95_ms": 4.451458,
+            "mean_ms": 4.451458,
+            "min_ms": 4.451458,
+            "max_ms": 4.451458
+          },
+          "c": {
+            "samples_ms": [
+              4.42575
+            ],
+            "median_ms": 4.42575,
+            "p95_ms": 4.42575,
+            "mean_ms": 4.42575,
+            "min_ms": 4.42575,
+            "max_ms": 4.42575
+          },
+          "rust_over_c_median_ratio": 1.005809
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              3.531416
+            ],
+            "median_ms": 3.531416,
+            "p95_ms": 3.531416,
+            "mean_ms": 3.531416,
+            "min_ms": 3.531416,
+            "max_ms": 3.531416
+          },
+          "c": {
+            "samples_ms": [
+              3.349584
+            ],
+            "median_ms": 3.349584,
+            "p95_ms": 3.349584,
+            "mean_ms": 3.349584,
+            "min_ms": 3.349584,
+            "max_ms": 3.349584
+          },
+          "rust_over_c_median_ratio": 1.054285
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s1_t2_heart_scale",
+        "svm_type": 1,
+        "kernel": 2,
+        "dataset": "heart_scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              6.083167
+            ],
+            "median_ms": 6.083167,
+            "p95_ms": 6.083167,
+            "mean_ms": 6.083167,
+            "min_ms": 6.083167,
+            "max_ms": 6.083167
+          },
+          "c": {
+            "samples_ms": [
+              5.163708
+            ],
+            "median_ms": 5.163708,
+            "p95_ms": 5.163708,
+            "mean_ms": 5.163708,
+            "min_ms": 5.163708,
+            "max_ms": 5.163708
+          },
+          "rust_over_c_median_ratio": 1.178062
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              4.647125
+            ],
+            "median_ms": 4.647125,
+            "p95_ms": 4.647125,
+            "mean_ms": 4.647125,
+            "min_ms": 4.647125,
+            "max_ms": 4.647125
+          },
+          "c": {
+            "samples_ms": [
+              4.040458
+            ],
+            "median_ms": 4.040458,
+            "p95_ms": 4.040458,
+            "mean_ms": 4.040458,
+            "min_ms": 4.040458,
+            "max_ms": 4.040458
+          },
+          "rust_over_c_median_ratio": 1.150148
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              10.203625
+            ],
+            "median_ms": 10.203625,
+            "p95_ms": 10.203625,
+            "mean_ms": 10.203625,
+            "min_ms": 10.203625,
+            "max_ms": 10.203625
+          },
+          "c": {
+            "samples_ms": [
+              9.5815
+            ],
+            "median_ms": 9.5815,
+            "p95_ms": 9.5815,
+            "mean_ms": 9.5815,
+            "min_ms": 9.5815,
+            "max_ms": 9.5815
+          },
+          "rust_over_c_median_ratio": 1.06493
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              4.371958
+            ],
+            "median_ms": 4.371958,
+            "p95_ms": 4.371958,
+            "mean_ms": 4.371958,
+            "min_ms": 4.371958,
+            "max_ms": 4.371958
+          },
+          "c": {
+            "samples_ms": [
+              4.535125
+            ],
+            "median_ms": 4.535125,
+            "p95_ms": 4.535125,
+            "mean_ms": 4.535125,
+            "min_ms": 4.535125,
+            "max_ms": 4.535125
+          },
+          "rust_over_c_median_ratio": 0.964021
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s1_t2_iris_scale",
+        "svm_type": 1,
+        "kernel": 2,
+        "dataset": "iris.scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              3.68925
+            ],
+            "median_ms": 3.68925,
+            "p95_ms": 3.68925,
+            "mean_ms": 3.68925,
+            "min_ms": 3.68925,
+            "max_ms": 3.68925
+          },
+          "c": {
+            "samples_ms": [
+              4.305625
+            ],
+            "median_ms": 4.305625,
+            "p95_ms": 4.305625,
+            "mean_ms": 4.305625,
+            "min_ms": 4.305625,
+            "max_ms": 4.305625
+          },
+          "rust_over_c_median_ratio": 0.856844
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              6.384875
+            ],
+            "median_ms": 6.384875,
+            "p95_ms": 6.384875,
+            "mean_ms": 6.384875,
+            "min_ms": 6.384875,
+            "max_ms": 6.384875
+          },
+          "c": {
+            "samples_ms": [
+              4.576209
+            ],
+            "median_ms": 4.576209,
+            "p95_ms": 4.576209,
+            "mean_ms": 4.576209,
+            "min_ms": 4.576209,
+            "max_ms": 4.576209
+          },
+          "rust_over_c_median_ratio": 1.395232
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              6.995792
+            ],
+            "median_ms": 6.995792,
+            "p95_ms": 6.995792,
+            "mean_ms": 6.995792,
+            "min_ms": 6.995792,
+            "max_ms": 6.995792
+          },
+          "c": {
+            "samples_ms": [
+              5.845959
+            ],
+            "median_ms": 5.845959,
+            "p95_ms": 5.845959,
+            "mean_ms": 5.845959,
+            "min_ms": 5.845959,
+            "max_ms": 5.845959
+          },
+          "rust_over_c_median_ratio": 1.196689
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              3.844375
+            ],
+            "median_ms": 3.844375,
+            "p95_ms": 3.844375,
+            "mean_ms": 3.844375,
+            "min_ms": 3.844375,
+            "max_ms": 3.844375
+          },
+          "c": {
+            "samples_ms": [
+              4.688958
+            ],
+            "median_ms": 4.688958,
+            "p95_ms": 4.688958,
+            "mean_ms": 4.688958,
+            "min_ms": 4.688958,
+            "max_ms": 4.688958
+          },
+          "rust_over_c_median_ratio": 0.819878
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s2_t2_heart_scale",
+        "svm_type": 2,
+        "kernel": 2,
+        "dataset": "heart_scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              5.130375
+            ],
+            "median_ms": 5.130375,
+            "p95_ms": 5.130375,
+            "mean_ms": 5.130375,
+            "min_ms": 5.130375,
+            "max_ms": 5.130375
+          },
+          "c": {
+            "samples_ms": [
+              5.134583
+            ],
+            "median_ms": 5.134583,
+            "p95_ms": 5.134583,
+            "mean_ms": 5.134583,
+            "min_ms": 5.134583,
+            "max_ms": 5.134583
+          },
+          "rust_over_c_median_ratio": 0.99918
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              4.5975
+            ],
+            "median_ms": 4.5975,
+            "p95_ms": 4.5975,
+            "mean_ms": 4.5975,
+            "min_ms": 4.5975,
+            "max_ms": 4.5975
+          },
+          "c": {
+            "samples_ms": [
+              4.442042
+            ],
+            "median_ms": 4.442042,
+            "p95_ms": 4.442042,
+            "mean_ms": 4.442042,
+            "min_ms": 4.442042,
+            "max_ms": 4.442042
+          },
+          "rust_over_c_median_ratio": 1.034997
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s2_t2_iris_scale",
+        "svm_type": 2,
+        "kernel": 2,
+        "dataset": "iris.scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              3.056167
+            ],
+            "median_ms": 3.056167,
+            "p95_ms": 3.056167,
+            "mean_ms": 3.056167,
+            "min_ms": 3.056167,
+            "max_ms": 3.056167
+          },
+          "c": {
+            "samples_ms": [
+              3.0435
+            ],
+            "median_ms": 3.0435,
+            "p95_ms": 3.0435,
+            "mean_ms": 3.0435,
+            "min_ms": 3.0435,
+            "max_ms": 3.0435
+          },
+          "rust_over_c_median_ratio": 1.004162
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              3.503541
+            ],
+            "median_ms": 3.503541,
+            "p95_ms": 3.503541,
+            "mean_ms": 3.503541,
+            "min_ms": 3.503541,
+            "max_ms": 3.503541
+          },
+          "c": {
+            "samples_ms": [
+              3.6945
+            ],
+            "median_ms": 3.6945,
+            "p95_ms": 3.6945,
+            "mean_ms": 3.6945,
+            "min_ms": 3.6945,
+            "max_ms": 3.6945
+          },
+          "rust_over_c_median_ratio": 0.948313
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s3_t2_housing_scale",
+        "svm_type": 3,
+        "kernel": 2,
+        "dataset": "housing_scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              14.640291
+            ],
+            "median_ms": 14.640291,
+            "p95_ms": 14.640291,
+            "mean_ms": 14.640291,
+            "min_ms": 14.640291,
+            "max_ms": 14.640291
+          },
+          "c": {
+            "samples_ms": [
+              16.086375
+            ],
+            "median_ms": 16.086375,
+            "p95_ms": 16.086375,
+            "mean_ms": 16.086375,
+            "min_ms": 16.086375,
+            "max_ms": 16.086375
+          },
+          "rust_over_c_median_ratio": 0.910105
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              7.347458
+            ],
+            "median_ms": 7.347458,
+            "p95_ms": 7.347458,
+            "mean_ms": 7.347458,
+            "min_ms": 7.347458,
+            "max_ms": 7.347458
+          },
+          "c": {
+            "samples_ms": [
+              8.022709
+            ],
+            "median_ms": 8.022709,
+            "p95_ms": 8.022709,
+            "mean_ms": 8.022709,
+            "min_ms": 8.022709,
+            "max_ms": 8.022709
+          },
+          "rust_over_c_median_ratio": 0.915833
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              38.068667
+            ],
+            "median_ms": 38.068667,
+            "p95_ms": 38.068667,
+            "mean_ms": 38.068667,
+            "min_ms": 38.068667,
+            "max_ms": 38.068667
+          },
+          "c": {
+            "samples_ms": [
+              30.709959
+            ],
+            "median_ms": 30.709959,
+            "p95_ms": 30.709959,
+            "mean_ms": 30.709959,
+            "min_ms": 30.709959,
+            "max_ms": 30.709959
+          },
+          "rust_over_c_median_ratio": 1.23962
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              7.85425
+            ],
+            "median_ms": 7.85425,
+            "p95_ms": 7.85425,
+            "mean_ms": 7.85425,
+            "min_ms": 7.85425,
+            "max_ms": 7.85425
+          },
+          "c": {
+            "samples_ms": [
+              8.248083
+            ],
+            "median_ms": 8.248083,
+            "p95_ms": 8.248083,
+            "mean_ms": 8.248083,
+            "min_ms": 8.248083,
+            "max_ms": 8.248083
+          },
+          "rust_over_c_median_ratio": 0.952252
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s4_t2_housing_scale",
+        "svm_type": 4,
+        "kernel": 2,
+        "dataset": "housing_scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              10.3625
+            ],
+            "median_ms": 10.3625,
+            "p95_ms": 10.3625,
+            "mean_ms": 10.3625,
+            "min_ms": 10.3625,
+            "max_ms": 10.3625
+          },
+          "c": {
+            "samples_ms": [
+              9.324
+            ],
+            "median_ms": 9.324,
+            "p95_ms": 9.324,
+            "mean_ms": 9.324,
+            "min_ms": 9.324,
+            "max_ms": 9.324
+          },
+          "rust_over_c_median_ratio": 1.111379
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              5.781167
+            ],
+            "median_ms": 5.781167,
+            "p95_ms": 5.781167,
+            "mean_ms": 5.781167,
+            "min_ms": 5.781167,
+            "max_ms": 5.781167
+          },
+          "c": {
+            "samples_ms": [
+              7.441417
+            ],
+            "median_ms": 7.441417,
+            "p95_ms": 7.441417,
+            "mean_ms": 7.441417,
+            "min_ms": 7.441417,
+            "max_ms": 7.441417
+          },
+          "rust_over_c_median_ratio": 0.776891
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              32.194792
+            ],
+            "median_ms": 32.194792,
+            "p95_ms": 32.194792,
+            "mean_ms": 32.194792,
+            "min_ms": 32.194792,
+            "max_ms": 32.194792
+          },
+          "c": {
+            "samples_ms": [
+              27.109375
+            ],
+            "median_ms": 27.109375,
+            "p95_ms": 27.109375,
+            "mean_ms": 27.109375,
+            "min_ms": 27.109375,
+            "max_ms": 27.109375
+          },
+          "rust_over_c_median_ratio": 1.187589
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              5.949375
+            ],
+            "median_ms": 5.949375,
+            "p95_ms": 5.949375,
+            "mean_ms": 5.949375,
+            "min_ms": 5.949375,
+            "max_ms": 5.949375
+          },
+          "c": {
+            "samples_ms": [
+              7.227208
+            ],
+            "median_ms": 7.227208,
+            "p95_ms": 7.227208,
+            "mean_ms": 7.227208,
+            "min_ms": 7.227208,
+            "max_ms": 7.227208
+          },
+          "rust_over_c_median_ratio": 0.823191
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s0_t3_heart_scale",
+        "svm_type": 0,
+        "kernel": 3,
+        "dataset": "heart_scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              5.033708
+            ],
+            "median_ms": 5.033708,
+            "p95_ms": 5.033708,
+            "mean_ms": 5.033708,
+            "min_ms": 5.033708,
+            "max_ms": 5.033708
+          },
+          "c": {
+            "samples_ms": [
+              5.01525
+            ],
+            "median_ms": 5.01525,
+            "p95_ms": 5.01525,
+            "mean_ms": 5.01525,
+            "min_ms": 5.01525,
+            "max_ms": 5.01525
+          },
+          "rust_over_c_median_ratio": 1.00368
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              4.336708
+            ],
+            "median_ms": 4.336708,
+            "p95_ms": 4.336708,
+            "mean_ms": 4.336708,
+            "min_ms": 4.336708,
+            "max_ms": 4.336708
+          },
+          "c": {
+            "samples_ms": [
+              4.515209
+            ],
+            "median_ms": 4.515209,
+            "p95_ms": 4.515209,
+            "mean_ms": 4.515209,
+            "min_ms": 4.515209,
+            "max_ms": 4.515209
+          },
+          "rust_over_c_median_ratio": 0.960467
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              10.080083
+            ],
+            "median_ms": 10.080083,
+            "p95_ms": 10.080083,
+            "mean_ms": 10.080083,
+            "min_ms": 10.080083,
+            "max_ms": 10.080083
+          },
+          "c": {
+            "samples_ms": [
+              9.202417
+            ],
+            "median_ms": 9.202417,
+            "p95_ms": 9.202417,
+            "mean_ms": 9.202417,
+            "min_ms": 9.202417,
+            "max_ms": 9.202417
+          },
+          "rust_over_c_median_ratio": 1.095373
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              4.892084
+            ],
+            "median_ms": 4.892084,
+            "p95_ms": 4.892084,
+            "mean_ms": 4.892084,
+            "min_ms": 4.892084,
+            "max_ms": 4.892084
+          },
+          "c": {
+            "samples_ms": [
+              5.682541
+            ],
+            "median_ms": 5.682541,
+            "p95_ms": 5.682541,
+            "mean_ms": 5.682541,
+            "min_ms": 5.682541,
+            "max_ms": 5.682541
+          },
+          "rust_over_c_median_ratio": 0.860897
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s0_t3_iris_scale",
+        "svm_type": 0,
+        "kernel": 3,
+        "dataset": "iris.scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              3.574917
+            ],
+            "median_ms": 3.574917,
+            "p95_ms": 3.574917,
+            "mean_ms": 3.574917,
+            "min_ms": 3.574917,
+            "max_ms": 3.574917
+          },
+          "c": {
+            "samples_ms": [
+              5.232708
+            ],
+            "median_ms": 5.232708,
+            "p95_ms": 5.232708,
+            "mean_ms": 5.232708,
+            "min_ms": 5.232708,
+            "max_ms": 5.232708
+          },
+          "rust_over_c_median_ratio": 0.683187
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              3.381417
+            ],
+            "median_ms": 3.381417,
+            "p95_ms": 3.381417,
+            "mean_ms": 3.381417,
+            "min_ms": 3.381417,
+            "max_ms": 3.381417
+          },
+          "c": {
+            "samples_ms": [
+              3.695667
+            ],
+            "median_ms": 3.695667,
+            "p95_ms": 3.695667,
+            "mean_ms": 3.695667,
+            "min_ms": 3.695667,
+            "max_ms": 3.695667
+          },
+          "rust_over_c_median_ratio": 0.914968
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              5.546834
+            ],
+            "median_ms": 5.546834,
+            "p95_ms": 5.546834,
+            "mean_ms": 5.546834,
+            "min_ms": 5.546834,
+            "max_ms": 5.546834
+          },
+          "c": {
+            "samples_ms": [
+              4.505958
+            ],
+            "median_ms": 4.505958,
+            "p95_ms": 4.505958,
+            "mean_ms": 4.505958,
+            "min_ms": 4.505958,
+            "max_ms": 4.505958
+          },
+          "rust_over_c_median_ratio": 1.231
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              4.160792
+            ],
+            "median_ms": 4.160792,
+            "p95_ms": 4.160792,
+            "mean_ms": 4.160792,
+            "min_ms": 4.160792,
+            "max_ms": 4.160792
+          },
+          "c": {
+            "samples_ms": [
+              4.101542
+            ],
+            "median_ms": 4.101542,
+            "p95_ms": 4.101542,
+            "mean_ms": 4.101542,
+            "min_ms": 4.101542,
+            "max_ms": 4.101542
+          },
+          "rust_over_c_median_ratio": 1.014446
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s1_t3_heart_scale",
+        "svm_type": 1,
+        "kernel": 3,
+        "dataset": "heart_scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              7.999667
+            ],
+            "median_ms": 7.999667,
+            "p95_ms": 7.999667,
+            "mean_ms": 7.999667,
+            "min_ms": 7.999667,
+            "max_ms": 7.999667
+          },
+          "c": {
+            "samples_ms": [
+              5.791209
+            ],
+            "median_ms": 5.791209,
+            "p95_ms": 5.791209,
+            "mean_ms": 5.791209,
+            "min_ms": 5.791209,
+            "max_ms": 5.791209
+          },
+          "rust_over_c_median_ratio": 1.381347
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              4.930417
+            ],
+            "median_ms": 4.930417,
+            "p95_ms": 4.930417,
+            "mean_ms": 4.930417,
+            "min_ms": 4.930417,
+            "max_ms": 4.930417
+          },
+          "c": {
+            "samples_ms": [
+              4.121959
+            ],
+            "median_ms": 4.121959,
+            "p95_ms": 4.121959,
+            "mean_ms": 4.121959,
+            "min_ms": 4.121959,
+            "max_ms": 4.121959
+          },
+          "rust_over_c_median_ratio": 1.196134
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              11.700083
+            ],
+            "median_ms": 11.700083,
+            "p95_ms": 11.700083,
+            "mean_ms": 11.700083,
+            "min_ms": 11.700083,
+            "max_ms": 11.700083
+          },
+          "c": {
+            "samples_ms": [
+              10.836834
+            ],
+            "median_ms": 10.836834,
+            "p95_ms": 10.836834,
+            "mean_ms": 10.836834,
+            "min_ms": 10.836834,
+            "max_ms": 10.836834
+          },
+          "rust_over_c_median_ratio": 1.079659
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              5.45075
+            ],
+            "median_ms": 5.45075,
+            "p95_ms": 5.45075,
+            "mean_ms": 5.45075,
+            "min_ms": 5.45075,
+            "max_ms": 5.45075
+          },
+          "c": {
+            "samples_ms": [
+              4.825834
+            ],
+            "median_ms": 4.825834,
+            "p95_ms": 4.825834,
+            "mean_ms": 4.825834,
+            "min_ms": 4.825834,
+            "max_ms": 4.825834
+          },
+          "rust_over_c_median_ratio": 1.129494
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s1_t3_iris_scale",
+        "svm_type": 1,
+        "kernel": 3,
+        "dataset": "iris.scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              3.833791
+            ],
+            "median_ms": 3.833791,
+            "p95_ms": 3.833791,
+            "mean_ms": 3.833791,
+            "min_ms": 3.833791,
+            "max_ms": 3.833791
+          },
+          "c": {
+            "samples_ms": [
+              3.614875
+            ],
+            "median_ms": 3.614875,
+            "p95_ms": 3.614875,
+            "mean_ms": 3.614875,
+            "min_ms": 3.614875,
+            "max_ms": 3.614875
+          },
+          "rust_over_c_median_ratio": 1.06056
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              3.577292
+            ],
+            "median_ms": 3.577292,
+            "p95_ms": 3.577292,
+            "mean_ms": 3.577292,
+            "min_ms": 3.577292,
+            "max_ms": 3.577292
+          },
+          "c": {
+            "samples_ms": [
+              3.651417
+            ],
+            "median_ms": 3.651417,
+            "p95_ms": 3.651417,
+            "mean_ms": 3.651417,
+            "min_ms": 3.651417,
+            "max_ms": 3.651417
+          },
+          "rust_over_c_median_ratio": 0.9797
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              5.185042
+            ],
+            "median_ms": 5.185042,
+            "p95_ms": 5.185042,
+            "mean_ms": 5.185042,
+            "min_ms": 5.185042,
+            "max_ms": 5.185042
+          },
+          "c": {
+            "samples_ms": [
+              5.856541
+            ],
+            "median_ms": 5.856541,
+            "p95_ms": 5.856541,
+            "mean_ms": 5.856541,
+            "min_ms": 5.856541,
+            "max_ms": 5.856541
+          },
+          "rust_over_c_median_ratio": 0.885342
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              3.815167
+            ],
+            "median_ms": 3.815167,
+            "p95_ms": 3.815167,
+            "mean_ms": 3.815167,
+            "min_ms": 3.815167,
+            "max_ms": 3.815167
+          },
+          "c": {
+            "samples_ms": [
+              4.336458
+            ],
+            "median_ms": 4.336458,
+            "p95_ms": 4.336458,
+            "mean_ms": 4.336458,
+            "min_ms": 4.336458,
+            "max_ms": 4.336458
+          },
+          "rust_over_c_median_ratio": 0.879789
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s2_t3_heart_scale",
+        "svm_type": 2,
+        "kernel": 3,
+        "dataset": "heart_scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              5.168834
+            ],
+            "median_ms": 5.168834,
+            "p95_ms": 5.168834,
+            "mean_ms": 5.168834,
+            "min_ms": 5.168834,
+            "max_ms": 5.168834
+          },
+          "c": {
+            "samples_ms": [
+              8.814459
+            ],
+            "median_ms": 8.814459,
+            "p95_ms": 8.814459,
+            "mean_ms": 8.814459,
+            "min_ms": 8.814459,
+            "max_ms": 8.814459
+          },
+          "rust_over_c_median_ratio": 0.586404
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              4.63525
+            ],
+            "median_ms": 4.63525,
+            "p95_ms": 4.63525,
+            "mean_ms": 4.63525,
+            "min_ms": 4.63525,
+            "max_ms": 4.63525
+          },
+          "c": {
+            "samples_ms": [
+              4.278042
+            ],
+            "median_ms": 4.278042,
+            "p95_ms": 4.278042,
+            "mean_ms": 4.278042,
+            "min_ms": 4.278042,
+            "max_ms": 4.278042
+          },
+          "rust_over_c_median_ratio": 1.083498
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s2_t3_iris_scale",
+        "svm_type": 2,
+        "kernel": 3,
+        "dataset": "iris.scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              5.838583
+            ],
+            "median_ms": 5.838583,
+            "p95_ms": 5.838583,
+            "mean_ms": 5.838583,
+            "min_ms": 5.838583,
+            "max_ms": 5.838583
+          },
+          "c": {
+            "samples_ms": [
+              3.546209
+            ],
+            "median_ms": 3.546209,
+            "p95_ms": 3.546209,
+            "mean_ms": 3.546209,
+            "min_ms": 3.546209,
+            "max_ms": 3.546209
+          },
+          "rust_over_c_median_ratio": 1.646429
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              3.635417
+            ],
+            "median_ms": 3.635417,
+            "p95_ms": 3.635417,
+            "mean_ms": 3.635417,
+            "min_ms": 3.635417,
+            "max_ms": 3.635417
+          },
+          "c": {
+            "samples_ms": [
+              3.1075
+            ],
+            "median_ms": 3.1075,
+            "p95_ms": 3.1075,
+            "mean_ms": 3.1075,
+            "min_ms": 3.1075,
+            "max_ms": 3.1075
+          },
+          "rust_over_c_median_ratio": 1.169885
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s3_t3_housing_scale",
+        "svm_type": 3,
+        "kernel": 3,
+        "dataset": "housing_scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              12.734208
+            ],
+            "median_ms": 12.734208,
+            "p95_ms": 12.734208,
+            "mean_ms": 12.734208,
+            "min_ms": 12.734208,
+            "max_ms": 12.734208
+          },
+          "c": {
+            "samples_ms": [
+              10.773375
+            ],
+            "median_ms": 10.773375,
+            "p95_ms": 10.773375,
+            "mean_ms": 10.773375,
+            "min_ms": 10.773375,
+            "max_ms": 10.773375
+          },
+          "rust_over_c_median_ratio": 1.182007
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              9.285959
+            ],
+            "median_ms": 9.285959,
+            "p95_ms": 9.285959,
+            "mean_ms": 9.285959,
+            "min_ms": 9.285959,
+            "max_ms": 9.285959
+          },
+          "c": {
+            "samples_ms": [
+              8.982083
+            ],
+            "median_ms": 8.982083,
+            "p95_ms": 8.982083,
+            "mean_ms": 8.982083,
+            "min_ms": 8.982083,
+            "max_ms": 8.982083
+          },
+          "rust_over_c_median_ratio": 1.033831
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              41.432167
+            ],
+            "median_ms": 41.432167,
+            "p95_ms": 41.432167,
+            "mean_ms": 41.432167,
+            "min_ms": 41.432167,
+            "max_ms": 41.432167
+          },
+          "c": {
+            "samples_ms": [
+              40.539709
+            ],
+            "median_ms": 40.539709,
+            "p95_ms": 40.539709,
+            "mean_ms": 40.539709,
+            "min_ms": 40.539709,
+            "max_ms": 40.539709
+          },
+          "rust_over_c_median_ratio": 1.022014
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              7.952875
+            ],
+            "median_ms": 7.952875,
+            "p95_ms": 7.952875,
+            "mean_ms": 7.952875,
+            "min_ms": 7.952875,
+            "max_ms": 7.952875
+          },
+          "c": {
+            "samples_ms": [
+              8.091417
+            ],
+            "median_ms": 8.091417,
+            "p95_ms": 8.091417,
+            "mean_ms": 8.091417,
+            "min_ms": 8.091417,
+            "max_ms": 8.091417
+          },
+          "rust_over_c_median_ratio": 0.982878
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s4_t3_housing_scale",
+        "svm_type": 4,
+        "kernel": 3,
+        "dataset": "housing_scale"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              10.521083
+            ],
+            "median_ms": 10.521083,
+            "p95_ms": 10.521083,
+            "mean_ms": 10.521083,
+            "min_ms": 10.521083,
+            "max_ms": 10.521083
+          },
+          "c": {
+            "samples_ms": [
+              10.405292
+            ],
+            "median_ms": 10.405292,
+            "p95_ms": 10.405292,
+            "mean_ms": 10.405292,
+            "min_ms": 10.405292,
+            "max_ms": 10.405292
+          },
+          "rust_over_c_median_ratio": 1.011128
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              5.837
+            ],
+            "median_ms": 5.837,
+            "p95_ms": 5.837,
+            "mean_ms": 5.837,
+            "min_ms": 5.837,
+            "max_ms": 5.837
+          },
+          "c": {
+            "samples_ms": [
+              6.447
+            ],
+            "median_ms": 6.447,
+            "p95_ms": 6.447,
+            "mean_ms": 6.447,
+            "min_ms": 6.447,
+            "max_ms": 6.447
+          },
+          "rust_over_c_median_ratio": 0.905382
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              35.557875
+            ],
+            "median_ms": 35.557875,
+            "p95_ms": 35.557875,
+            "mean_ms": 35.557875,
+            "min_ms": 35.557875,
+            "max_ms": 35.557875
+          },
+          "c": {
+            "samples_ms": [
+              28.391334
+            ],
+            "median_ms": 28.391334,
+            "p95_ms": 28.391334,
+            "mean_ms": 28.391334,
+            "min_ms": 28.391334,
+            "max_ms": 28.391334
+          },
+          "rust_over_c_median_ratio": 1.25242
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              6.202209
+            ],
+            "median_ms": 6.202209,
+            "p95_ms": 6.202209,
+            "mean_ms": 6.202209,
+            "min_ms": 6.202209,
+            "max_ms": 6.202209
+          },
+          "c": {
+            "samples_ms": [
+              6.133958
+            ],
+            "median_ms": 6.133958,
+            "p95_ms": 6.133958,
+            "mean_ms": 6.133958,
+            "min_ms": 6.133958,
+            "max_ms": 6.133958
+          },
+          "rust_over_c_median_ratio": 1.011127
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s0_t4_heart_scale_precomputed",
+        "svm_type": 0,
+        "kernel": 4,
+        "dataset": "heart_scale.precomputed"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              9.034209
+            ],
+            "median_ms": 9.034209,
+            "p95_ms": 9.034209,
+            "mean_ms": 9.034209,
+            "min_ms": 9.034209,
+            "max_ms": 9.034209
+          },
+          "c": {
+            "samples_ms": [
+              15.613791
+            ],
+            "median_ms": 15.613791,
+            "p95_ms": 15.613791,
+            "mean_ms": 15.613791,
+            "min_ms": 15.613791,
+            "max_ms": 15.613791
+          },
+          "rust_over_c_median_ratio": 0.578604
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              8.182625
+            ],
+            "median_ms": 8.182625,
+            "p95_ms": 8.182625,
+            "mean_ms": 8.182625,
+            "min_ms": 8.182625,
+            "max_ms": 8.182625
+          },
+          "c": {
+            "samples_ms": [
+              9.899666
+            ],
+            "median_ms": 9.899666,
+            "p95_ms": 9.899666,
+            "mean_ms": 9.899666,
+            "min_ms": 9.899666,
+            "max_ms": 9.899666
+          },
+          "rust_over_c_median_ratio": 0.826556
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              13.721
+            ],
+            "median_ms": 13.721,
+            "p95_ms": 13.721,
+            "mean_ms": 13.721,
+            "min_ms": 13.721,
+            "max_ms": 13.721
+          },
+          "c": {
+            "samples_ms": [
+              15.892875
+            ],
+            "median_ms": 15.892875,
+            "p95_ms": 15.892875,
+            "mean_ms": 15.892875,
+            "min_ms": 15.892875,
+            "max_ms": 15.892875
+          },
+          "rust_over_c_median_ratio": 0.863343
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              8.447291
+            ],
+            "median_ms": 8.447291,
+            "p95_ms": 8.447291,
+            "mean_ms": 8.447291,
+            "min_ms": 8.447291,
+            "max_ms": 8.447291
+          },
+          "c": {
+            "samples_ms": [
+              10.055167
+            ],
+            "median_ms": 10.055167,
+            "p95_ms": 10.055167,
+            "mean_ms": 10.055167,
+            "min_ms": 10.055167,
+            "max_ms": 10.055167
+          },
+          "rust_over_c_median_ratio": 0.840095
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s0_t4_iris_scale_precomputed",
+        "svm_type": 0,
+        "kernel": 4,
+        "dataset": "iris.scale.precomputed"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              4.961208
+            ],
+            "median_ms": 4.961208,
+            "p95_ms": 4.961208,
+            "mean_ms": 4.961208,
+            "min_ms": 4.961208,
+            "max_ms": 4.961208
+          },
+          "c": {
+            "samples_ms": [
+              6.6475
+            ],
+            "median_ms": 6.6475,
+            "p95_ms": 6.6475,
+            "mean_ms": 6.6475,
+            "min_ms": 6.6475,
+            "max_ms": 6.6475
+          },
+          "rust_over_c_median_ratio": 0.746327
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              4.562584
+            ],
+            "median_ms": 4.562584,
+            "p95_ms": 4.562584,
+            "mean_ms": 4.562584,
+            "min_ms": 4.562584,
+            "max_ms": 4.562584
+          },
+          "c": {
+            "samples_ms": [
+              5.077917
+            ],
+            "median_ms": 5.077917,
+            "p95_ms": 5.077917,
+            "mean_ms": 5.077917,
+            "min_ms": 5.077917,
+            "max_ms": 5.077917
+          },
+          "rust_over_c_median_ratio": 0.898515
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              5.320334
+            ],
+            "median_ms": 5.320334,
+            "p95_ms": 5.320334,
+            "mean_ms": 5.320334,
+            "min_ms": 5.320334,
+            "max_ms": 5.320334
+          },
+          "c": {
+            "samples_ms": [
+              6.656083
+            ],
+            "median_ms": 6.656083,
+            "p95_ms": 6.656083,
+            "mean_ms": 6.656083,
+            "min_ms": 6.656083,
+            "max_ms": 6.656083
+          },
+          "rust_over_c_median_ratio": 0.799319
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              4.83075
+            ],
+            "median_ms": 4.83075,
+            "p95_ms": 4.83075,
+            "mean_ms": 4.83075,
+            "min_ms": 4.83075,
+            "max_ms": 4.83075
+          },
+          "c": {
+            "samples_ms": [
+              5.3455
+            ],
+            "median_ms": 5.3455,
+            "p95_ms": 5.3455,
+            "mean_ms": 5.3455,
+            "min_ms": 5.3455,
+            "max_ms": 5.3455
+          },
+          "rust_over_c_median_ratio": 0.903704
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s1_t4_heart_scale_precomputed",
+        "svm_type": 1,
+        "kernel": 4,
+        "dataset": "heart_scale.precomputed"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              8.089625
+            ],
+            "median_ms": 8.089625,
+            "p95_ms": 8.089625,
+            "mean_ms": 8.089625,
+            "min_ms": 8.089625,
+            "max_ms": 8.089625
+          },
+          "c": {
+            "samples_ms": [
+              14.379584
+            ],
+            "median_ms": 14.379584,
+            "p95_ms": 14.379584,
+            "mean_ms": 14.379584,
+            "min_ms": 14.379584,
+            "max_ms": 14.379584
+          },
+          "rust_over_c_median_ratio": 0.562577
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              12.222667
+            ],
+            "median_ms": 12.222667,
+            "p95_ms": 12.222667,
+            "mean_ms": 12.222667,
+            "min_ms": 12.222667,
+            "max_ms": 12.222667
+          },
+          "c": {
+            "samples_ms": [
+              12.951375
+            ],
+            "median_ms": 12.951375,
+            "p95_ms": 12.951375,
+            "mean_ms": 12.951375,
+            "min_ms": 12.951375,
+            "max_ms": 12.951375
+          },
+          "rust_over_c_median_ratio": 0.943735
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              13.175
+            ],
+            "median_ms": 13.175,
+            "p95_ms": 13.175,
+            "mean_ms": 13.175,
+            "min_ms": 13.175,
+            "max_ms": 13.175
+          },
+          "c": {
+            "samples_ms": [
+              15.882209
+            ],
+            "median_ms": 15.882209,
+            "p95_ms": 15.882209,
+            "mean_ms": 15.882209,
+            "min_ms": 15.882209,
+            "max_ms": 15.882209
+          },
+          "rust_over_c_median_ratio": 0.829545
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              9.132709
+            ],
+            "median_ms": 9.132709,
+            "p95_ms": 9.132709,
+            "mean_ms": 9.132709,
+            "min_ms": 9.132709,
+            "max_ms": 9.132709
+          },
+          "c": {
+            "samples_ms": [
+              9.709333
+            ],
+            "median_ms": 9.709333,
+            "p95_ms": 9.709333,
+            "mean_ms": 9.709333,
+            "min_ms": 9.709333,
+            "max_ms": 9.709333
+          },
+          "rust_over_c_median_ratio": 0.940611
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s1_t4_iris_scale_precomputed",
+        "svm_type": 1,
+        "kernel": 4,
+        "dataset": "iris.scale.precomputed"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              6.383541
+            ],
+            "median_ms": 6.383541,
+            "p95_ms": 6.383541,
+            "mean_ms": 6.383541,
+            "min_ms": 6.383541,
+            "max_ms": 6.383541
+          },
+          "c": {
+            "samples_ms": [
+              6.513209
+            ],
+            "median_ms": 6.513209,
+            "p95_ms": 6.513209,
+            "mean_ms": 6.513209,
+            "min_ms": 6.513209,
+            "max_ms": 6.513209
+          },
+          "rust_over_c_median_ratio": 0.980092
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              5.243
+            ],
+            "median_ms": 5.243,
+            "p95_ms": 5.243,
+            "mean_ms": 5.243,
+            "min_ms": 5.243,
+            "max_ms": 5.243
+          },
+          "c": {
+            "samples_ms": [
+              9.214125
+            ],
+            "median_ms": 9.214125,
+            "p95_ms": 9.214125,
+            "mean_ms": 9.214125,
+            "min_ms": 9.214125,
+            "max_ms": 9.214125
+          },
+          "rust_over_c_median_ratio": 0.569018
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              7.140666
+            ],
+            "median_ms": 7.140666,
+            "p95_ms": 7.140666,
+            "mean_ms": 7.140666,
+            "min_ms": 7.140666,
+            "max_ms": 7.140666
+          },
+          "c": {
+            "samples_ms": [
+              8.613959
+            ],
+            "median_ms": 8.613959,
+            "p95_ms": 8.613959,
+            "mean_ms": 8.613959,
+            "min_ms": 8.613959,
+            "max_ms": 8.613959
+          },
+          "rust_over_c_median_ratio": 0.828964
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              5.835083
+            ],
+            "median_ms": 5.835083,
+            "p95_ms": 5.835083,
+            "mean_ms": 5.835083,
+            "min_ms": 5.835083,
+            "max_ms": 5.835083
+          },
+          "c": {
+            "samples_ms": [
+              6.86575
+            ],
+            "median_ms": 6.86575,
+            "p95_ms": 6.86575,
+            "mean_ms": 6.86575,
+            "min_ms": 6.86575,
+            "max_ms": 6.86575
+          },
+          "rust_over_c_median_ratio": 0.849883
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s2_t4_heart_scale_precomputed",
+        "svm_type": 2,
+        "kernel": 4,
+        "dataset": "heart_scale.precomputed"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              8.972875
+            ],
+            "median_ms": 8.972875,
+            "p95_ms": 8.972875,
+            "mean_ms": 8.972875,
+            "min_ms": 8.972875,
+            "max_ms": 8.972875
+          },
+          "c": {
+            "samples_ms": [
+              15.421375
+            ],
+            "median_ms": 15.421375,
+            "p95_ms": 15.421375,
+            "mean_ms": 15.421375,
+            "min_ms": 15.421375,
+            "max_ms": 15.421375
+          },
+          "rust_over_c_median_ratio": 0.581847
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              10.020958
+            ],
+            "median_ms": 10.020958,
+            "p95_ms": 10.020958,
+            "mean_ms": 10.020958,
+            "min_ms": 10.020958,
+            "max_ms": 10.020958
+          },
+          "c": {
+            "samples_ms": [
+              12.37225
+            ],
+            "median_ms": 12.37225,
+            "p95_ms": 12.37225,
+            "mean_ms": 12.37225,
+            "min_ms": 12.37225,
+            "max_ms": 12.37225
+          },
+          "rust_over_c_median_ratio": 0.809954
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s2_t4_iris_scale_precomputed",
+        "svm_type": 2,
+        "kernel": 4,
+        "dataset": "iris.scale.precomputed"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              5.363334
+            ],
+            "median_ms": 5.363334,
+            "p95_ms": 5.363334,
+            "mean_ms": 5.363334,
+            "min_ms": 5.363334,
+            "max_ms": 5.363334
+          },
+          "c": {
+            "samples_ms": [
+              6.986833
+            ],
+            "median_ms": 6.986833,
+            "p95_ms": 6.986833,
+            "mean_ms": 6.986833,
+            "min_ms": 6.986833,
+            "max_ms": 6.986833
+          },
+          "rust_over_c_median_ratio": 0.767634
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              5.069209
+            ],
+            "median_ms": 5.069209,
+            "p95_ms": 5.069209,
+            "mean_ms": 5.069209,
+            "min_ms": 5.069209,
+            "max_ms": 5.069209
+          },
+          "c": {
+            "samples_ms": [
+              7.475625
+            ],
+            "median_ms": 7.475625,
+            "p95_ms": 7.475625,
+            "mean_ms": 7.475625,
+            "min_ms": 7.475625,
+            "max_ms": 7.475625
+          },
+          "rust_over_c_median_ratio": 0.678098
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s3_t4_housing_scale_precomputed",
+        "svm_type": 3,
+        "kernel": 4,
+        "dataset": "housing_scale.precomputed"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              42.292291
+            ],
+            "median_ms": 42.292291,
+            "p95_ms": 42.292291,
+            "mean_ms": 42.292291,
+            "min_ms": 42.292291,
+            "max_ms": 42.292291
+          },
+          "c": {
+            "samples_ms": [
+              43.250541
+            ],
+            "median_ms": 43.250541,
+            "p95_ms": 43.250541,
+            "mean_ms": 43.250541,
+            "min_ms": 43.250541,
+            "max_ms": 43.250541
+          },
+          "rust_over_c_median_ratio": 0.977844
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              17.173
+            ],
+            "median_ms": 17.173,
+            "p95_ms": 17.173,
+            "mean_ms": 17.173,
+            "min_ms": 17.173,
+            "max_ms": 17.173
+          },
+          "c": {
+            "samples_ms": [
+              28.090875
+            ],
+            "median_ms": 28.090875,
+            "p95_ms": 28.090875,
+            "mean_ms": 28.090875,
+            "min_ms": 28.090875,
+            "max_ms": 28.090875
+          },
+          "rust_over_c_median_ratio": 0.611337
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              54.976334
+            ],
+            "median_ms": 54.976334,
+            "p95_ms": 54.976334,
+            "mean_ms": 54.976334,
+            "min_ms": 54.976334,
+            "max_ms": 54.976334
+          },
+          "c": {
+            "samples_ms": [
+              61.513541
+            ],
+            "median_ms": 61.513541,
+            "p95_ms": 61.513541,
+            "mean_ms": 61.513541,
+            "min_ms": 61.513541,
+            "max_ms": 61.513541
+          },
+          "rust_over_c_median_ratio": 0.893727
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              18.615666
+            ],
+            "median_ms": 18.615666,
+            "p95_ms": 18.615666,
+            "mean_ms": 18.615666,
+            "min_ms": 18.615666,
+            "max_ms": 18.615666
+          },
+          "c": {
+            "samples_ms": [
+              29.125083
+            ],
+            "median_ms": 29.125083,
+            "p95_ms": 29.125083,
+            "mean_ms": 29.125083,
+            "min_ms": 29.125083,
+            "max_ms": 29.125083
+          },
+          "rust_over_c_median_ratio": 0.639163
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "s4_t4_housing_scale_precomputed",
+        "svm_type": 4,
+        "kernel": 4,
+        "dataset": "housing_scale.precomputed"
+      },
+      "operations": {
+        "train": {
+          "rust": {
+            "samples_ms": [
+              28.901709
+            ],
+            "median_ms": 28.901709,
+            "p95_ms": 28.901709,
+            "mean_ms": 28.901709,
+            "min_ms": 28.901709,
+            "max_ms": 28.901709
+          },
+          "c": {
+            "samples_ms": [
+              47.236
+            ],
+            "median_ms": 47.236,
+            "p95_ms": 47.236,
+            "mean_ms": 47.236,
+            "min_ms": 47.236,
+            "max_ms": 47.236
+          },
+          "rust_over_c_median_ratio": 0.611858
+        },
+        "predict": {
+          "rust": {
+            "samples_ms": [
+              23.577333
+            ],
+            "median_ms": 23.577333,
+            "p95_ms": 23.577333,
+            "mean_ms": 23.577333,
+            "min_ms": 23.577333,
+            "max_ms": 23.577333
+          },
+          "c": {
+            "samples_ms": [
+              30.585416
+            ],
+            "median_ms": 30.585416,
+            "p95_ms": 30.585416,
+            "mean_ms": 30.585416,
+            "min_ms": 30.585416,
+            "max_ms": 30.585416
+          },
+          "rust_over_c_median_ratio": 0.770868
+        },
+        "train_probability": {
+          "rust": {
+            "samples_ms": [
+              64.904875
+            ],
+            "median_ms": 64.904875,
+            "p95_ms": 64.904875,
+            "mean_ms": 64.904875,
+            "min_ms": 64.904875,
+            "max_ms": 64.904875
+          },
+          "c": {
+            "samples_ms": [
+              69.855917
+            ],
+            "median_ms": 69.855917,
+            "p95_ms": 69.855917,
+            "mean_ms": 69.855917,
+            "min_ms": 69.855917,
+            "max_ms": 69.855917
+          },
+          "rust_over_c_median_ratio": 0.929125
+        },
+        "predict_probability": {
+          "rust": {
+            "samples_ms": [
+              19.002166
+            ],
+            "median_ms": 19.002166,
+            "p95_ms": 19.002166,
+            "mean_ms": 19.002166,
+            "min_ms": 19.002166,
+            "max_ms": 19.002166
+          },
+          "c": {
+            "samples_ms": [
+              29.62475
+            ],
+            "median_ms": 29.62475,
+            "p95_ms": 29.62475,
+            "mean_ms": 29.62475,
+            "min_ms": 29.62475,
+            "max_ms": 29.62475
+          },
+          "rust_over_c_median_ratio": 0.641429
+        }
+      }
+    }
+  ]
+}

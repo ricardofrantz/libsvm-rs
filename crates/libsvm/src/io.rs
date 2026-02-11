@@ -142,6 +142,8 @@ fn str_to_kernel_type(s: &str) -> Option<KernelType> {
 
 // ─── Problem file I/O ────────────────────────────────────────────────
 
+const MAX_FEATURE_INDEX: i32 = 10_000_000;
+
 /// Load an SVM problem from a file in LIBSVM sparse format.
 ///
 /// Format: `<label> <index1>:<value1> <index2>:<value2> ...`
@@ -188,6 +190,17 @@ pub fn load_problem_from_reader(reader: impl BufRead) -> Result<SvmProblem, SvmE
                 line: line_num,
                 message: format!("invalid index: {}", idx_str),
             })?;
+
+            if index > MAX_FEATURE_INDEX {
+                return Err(SvmError::ParseError {
+                    line: line_num,
+                    message: format!(
+                        "feature index {} exceeds limit ({})",
+                        index, MAX_FEATURE_INDEX
+                    ),
+                });
+            }
+
             if !nodes.is_empty() && index <= prev_index {
                 return Err(SvmError::ParseError {
                     line: line_num,
@@ -354,9 +367,9 @@ pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError
     // Read header
     let mut line_num: usize = 0;
     loop {
-        let line = lines
-            .next()
-            .ok_or_else(|| SvmError::ModelFormatError("unexpected end of file in header".into()))??;
+        let line = lines.next().ok_or_else(|| {
+            SvmError::ModelFormatError("unexpected end of file in header".into())
+        })??;
         line_num += 1;
         let line = line.trim().to_string();
         if line.is_empty() {
@@ -368,19 +381,28 @@ pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError
 
         match cmd {
             "svm_type" => {
-                let val = parts.next().ok_or_else(|| SvmError::ModelFormatError(
-                    format!("line {}: missing svm_type value", line_num),
-                ))?;
+                let val = parts.next().ok_or_else(|| {
+                    SvmError::ModelFormatError(format!("line {}: missing svm_type value", line_num))
+                })?;
                 param.svm_type = str_to_svm_type(val).ok_or_else(|| {
-                    SvmError::ModelFormatError(format!("line {}: unknown svm_type: {}", line_num, val))
+                    SvmError::ModelFormatError(format!(
+                        "line {}: unknown svm_type: {}",
+                        line_num, val
+                    ))
                 })?;
             }
             "kernel_type" => {
-                let val = parts.next().ok_or_else(|| SvmError::ModelFormatError(
-                    format!("line {}: missing kernel_type value", line_num),
-                ))?;
+                let val = parts.next().ok_or_else(|| {
+                    SvmError::ModelFormatError(format!(
+                        "line {}: missing kernel_type value",
+                        line_num
+                    ))
+                })?;
                 param.kernel_type = str_to_kernel_type(val).ok_or_else(|| {
-                    SvmError::ModelFormatError(format!("line {}: unknown kernel_type: {}", line_num, val))
+                    SvmError::ModelFormatError(format!(
+                        "line {}: unknown kernel_type: {}",
+                        line_num, val
+                    ))
                 })?;
             }
             "degree" => {
@@ -423,7 +445,8 @@ pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError
                 prob_b = parse_multiple_f64(&mut parts, line_num, "probB")?;
             }
             "prob_density_marks" => {
-                prob_density_marks = parse_multiple_f64(&mut parts, line_num, "prob_density_marks")?;
+                prob_density_marks =
+                    parse_multiple_f64(&mut parts, line_num, "prob_density_marks")?;
             }
             "nr_sv" => {
                 n_sv = parts
@@ -453,9 +476,9 @@ pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError
     let mut sv: Vec<Vec<SvmNode>> = Vec::with_capacity(total_sv);
 
     for _ in 0..total_sv {
-        let line = lines
-            .next()
-            .ok_or_else(|| SvmError::ModelFormatError("unexpected end of file in SV section".into()))??;
+        let line = lines.next().ok_or_else(|| {
+            SvmError::ModelFormatError("unexpected end of file in SV section".into())
+        })??;
         line_num += 1;
         let line = line.trim();
         if line.is_empty() {
@@ -466,12 +489,15 @@ pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError
 
         // First m tokens are sv_coef values
         for (k, coef_row) in sv_coef.iter_mut().enumerate() {
-            let val_str = parts.next().ok_or_else(|| SvmError::ModelFormatError(
-                format!("line {}: missing sv_coef[{}]", line_num, k),
-            ))?;
-            let val: f64 = val_str.parse().map_err(|_| SvmError::ModelFormatError(
-                format!("line {}: invalid sv_coef: {}", line_num, val_str),
-            ))?;
+            let val_str = parts.next().ok_or_else(|| {
+                SvmError::ModelFormatError(format!("line {}: missing sv_coef[{}]", line_num, k))
+            })?;
+            let val: f64 = val_str.parse().map_err(|_| {
+                SvmError::ModelFormatError(format!(
+                    "line {}: invalid sv_coef: {}",
+                    line_num, val_str
+                ))
+            })?;
             coef_row.push(val);
         }
 
@@ -487,6 +513,14 @@ pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError
             let index: i32 = idx_str.parse().map_err(|_| {
                 SvmError::ModelFormatError(format!("line {}: invalid index: {}", line_num, idx_str))
             })?;
+
+            if index > MAX_FEATURE_INDEX {
+                return Err(SvmError::ModelFormatError(format!(
+                    "line {}: feature index {} exceeds limit ({})",
+                    line_num, index, MAX_FEATURE_INDEX
+                )));
+            }
+
             let value: f64 = val_str.parse().map_err(|_| {
                 SvmError::ModelFormatError(format!("line {}: invalid value: {}", line_num, val_str))
             })?;
@@ -521,7 +555,10 @@ fn parse_single<T: std::str::FromStr>(
         SvmError::ModelFormatError(format!("line {}: missing {} value", line_num, field))
     })?;
     val_str.parse().map_err(|_| {
-        SvmError::ModelFormatError(format!("line {}: invalid {} value: {}", line_num, field, val_str))
+        SvmError::ModelFormatError(format!(
+            "line {}: invalid {} value: {}",
+            line_num, field, val_str
+        ))
     })
 }
 
@@ -581,7 +618,13 @@ mod tests {
         assert_eq!(problem.instances.len(), 270);
         // First instance: +1 label, 12 features (index 11 is missing/sparse)
         assert_eq!(problem.labels[0], 1.0);
-        assert_eq!(problem.instances[0][0], SvmNode { index: 1, value: 0.708333 });
+        assert_eq!(
+            problem.instances[0][0],
+            SvmNode {
+                index: 1,
+                value: 0.708333
+            }
+        );
         assert_eq!(problem.instances[0].len(), 12);
     }
 
@@ -676,7 +719,14 @@ mod tests {
             rust_lines.len()
         );
         for (i, (o, r)) in orig_lines.iter().zip(rust_lines.iter()).enumerate() {
-            assert_eq!(o, r, "line {} differs:\n  C:    {:?}\n  Rust: {:?}", i + 1, o, r);
+            assert_eq!(
+                o,
+                r,
+                "line {} differs:\n  C:    {:?}\n  Rust: {:?}",
+                i + 1,
+                o,
+                r
+            );
         }
     }
 
@@ -685,19 +735,19 @@ mod tests {
     fn gfmt_matches_c_printf() {
         // Reference values from C's printf("%.17g|%.8g\n", v, v)
         let cases: &[(f64, &str, &str)] = &[
-            (0.5,                    "0.5",                      "0.5"),
-            (-1.0,                   "-1",                       "-1"),
-            (0.123456789012345,      "0.123456789012345",        "0.12345679"),
-            (-0.987654321098765,     "-0.98765432109876505",     "-0.98765432"),
-            (0.42446200000000001,    "0.42446200000000001",      "0.424462"),
-            (0.0,                    "0",                        "0"),
-            (1e-5,                   "1.0000000000000001e-05",   "1e-05"),
-            (1e-4,                   "0.0001",                   "0.0001"),
-            (1e20,                   "1e+20",                    "1e+20"),
-            (-0.25,                  "-0.25",                    "-0.25"),
-            (0.75,                   "0.75",                     "0.75"),
-            (0.708333,               "0.70833299999999999",      "0.708333"),
-            (1.0,                    "1",                        "1"),
+            (0.5, "0.5", "0.5"),
+            (-1.0, "-1", "-1"),
+            (0.123456789012345, "0.123456789012345", "0.12345679"),
+            (-0.987654321098765, "-0.98765432109876505", "-0.98765432"),
+            (0.42446200000000001, "0.42446200000000001", "0.424462"),
+            (0.0, "0", "0"),
+            (1e-5, "1.0000000000000001e-05", "1e-05"),
+            (1e-4, "0.0001", "0.0001"),
+            (1e20, "1e+20", "1e+20"),
+            (-0.25, "-0.25", "-0.25"),
+            (0.75, "0.75", "0.75"),
+            (0.708333, "0.70833299999999999", "0.708333"),
+            (1.0, "1", "1"),
         ];
         for &(v, expected_17g, expected_8g) in cases {
             let got_17 = format!("{}", fmt_17g(v));
@@ -720,8 +770,26 @@ mod tests {
             },
             nr_class: 2,
             sv: vec![
-                vec![SvmNode { index: 1, value: 0.5 }, SvmNode { index: 3, value: -1.0 }],
-                vec![SvmNode { index: 1, value: -0.25 }, SvmNode { index: 2, value: 0.75 }],
+                vec![
+                    SvmNode {
+                        index: 1,
+                        value: 0.5,
+                    },
+                    SvmNode {
+                        index: 3,
+                        value: -1.0,
+                    },
+                ],
+                vec![
+                    SvmNode {
+                        index: 1,
+                        value: -0.25,
+                    },
+                    SvmNode {
+                        index: 2,
+                        value: 0.75,
+                    },
+                ],
             ],
             sv_coef: vec![vec![0.123456789012345, -0.987654321098765]],
             rho: vec![0.42446200000000001],
@@ -759,14 +827,134 @@ mod tests {
 
     #[test]
     fn parse_error_excessive_counts() {
-        let input = b"svm_type c_svc\nkernel_type linear\nnr_class 1000000\ntotal_sv 100\nrho 0\nSV\n";
+        let input =
+            b"svm_type c_svc\nkernel_type linear\nnr_class 1000000\ntotal_sv 100\nrho 0\nSV\n";
         let result = load_model_from_reader(&input[..]);
         assert!(result.is_err());
         assert!(format!("{}", result.unwrap_err()).contains("nr_class exceeds limit"));
 
-        let input = b"svm_type c_svc\nkernel_type linear\nnr_class 2\ntotal_sv 100000000\nrho 0\nSV\n";
+        let input =
+            b"svm_type c_svc\nkernel_type linear\nnr_class 2\ntotal_sv 100000000\nrho 0\nSV\n";
         let result = load_model_from_reader(&input[..]);
         assert!(result.is_err());
         assert!(format!("{}", result.unwrap_err()).contains("total_sv exceeds limit"));
+    }
+
+    #[test]
+    fn parse_error_excessive_feature_index() {
+        // Problem file
+        let input = b"1 10000001:1\n";
+        let result = load_problem_from_reader(&input[..]);
+        assert!(result.is_err());
+        assert!(format!("{}", result.unwrap_err()).contains("feature index 10000001 exceeds limit"));
+
+        // Model file
+        let input = b"svm_type c_svc\nkernel_type linear\nnr_class 2\ntotal_sv 1\nrho 0\nSV\n0.1 10000001:1\n";
+        let result = load_model_from_reader(&input[..]);
+        assert!(result.is_err());
+        assert!(format!("{}", result.unwrap_err()).contains("feature index 10000001 exceeds limit"));
+    }
+
+    #[test]
+    fn parse_error_unknown_model_keyword() {
+        let input = b"bad_key value\n";
+        let result = load_model_from_reader(&input[..]);
+        assert!(result.is_err());
+        assert!(format!("{}", result.unwrap_err()).contains("unknown keyword"));
+    }
+
+    #[test]
+    fn parse_error_missing_or_unknown_model_values() {
+        let missing = b"svm_type\n";
+        let err = load_model_from_reader(&missing[..]).unwrap_err();
+        assert!(format!("{}", err).contains("missing svm_type value"));
+
+        let unknown = b"svm_type unknown_type\n";
+        let err = load_model_from_reader(&unknown[..]).unwrap_err();
+        assert!(format!("{}", err).contains("unknown svm_type"));
+    }
+
+    #[test]
+    fn parse_error_invalid_nr_sv_entry() {
+        let input = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 2\n\
+total_sv 1\n\
+rho 0\n\
+nr_sv a 1\n\
+SV\n\
+0.1 1:0.5\n";
+        let err = load_model_from_reader(&input[..]).unwrap_err();
+        assert!(format!("{}", err).contains("invalid nr_sv value"));
+    }
+
+    #[test]
+    fn parse_error_in_sv_section_tokens() {
+        let missing_coef = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 2\n\
+total_sv 1\n\
+rho 0\n\
+SV\n\
+1:0.5\n";
+        let err = load_model_from_reader(&missing_coef[..]).unwrap_err();
+        assert!(format!("{}", err).contains("invalid sv_coef"));
+
+        let bad_feature = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 2\n\
+total_sv 1\n\
+rho 0\n\
+SV\n\
+0.1 bad\n";
+        let err = load_model_from_reader(&bad_feature[..]).unwrap_err();
+        assert!(format!("{}", err).contains("expected index:value"));
+    }
+
+    #[test]
+    fn parse_error_unexpected_eof_in_header_and_sv_section() {
+        let eof_header = b"svm_type c_svc\n";
+        let err = load_model_from_reader(&eof_header[..]).unwrap_err();
+        assert!(format!("{}", err).contains("unexpected end of file in header"));
+
+        let eof_sv = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 2\n\
+total_sv 2\n\
+rho 0\n\
+SV\n\
+0.1 1:0.5\n";
+        let err = load_model_from_reader(&eof_sv[..]).unwrap_err();
+        assert!(format!("{}", err).contains("unexpected end of file in SV section"));
+    }
+
+    #[test]
+    fn save_precomputed_model_writes_zero_index() {
+        let model = SvmModel {
+            param: SvmParameter {
+                svm_type: SvmType::CSvc,
+                kernel_type: KernelType::Precomputed,
+                ..Default::default()
+            },
+            nr_class: 2,
+            sv: vec![vec![SvmNode {
+                index: 0,
+                value: 7.0,
+            }]],
+            sv_coef: vec![vec![0.25]],
+            rho: vec![0.0],
+            prob_a: vec![],
+            prob_b: vec![],
+            prob_density_marks: vec![],
+            sv_indices: vec![],
+            label: vec![1, -1],
+            n_sv: vec![1, 0],
+        };
+
+        let mut buf = Vec::new();
+        save_model_to_writer(&mut buf, &model).unwrap();
+        let out = String::from_utf8(buf).unwrap();
+        assert!(out.contains("kernel_type precomputed"));
+        assert!(out.contains("0:7"));
     }
 }

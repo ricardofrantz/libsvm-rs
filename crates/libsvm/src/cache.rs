@@ -54,7 +54,10 @@ impl Cache {
 
         // Create l+1 nodes: 0..l for data rows, l for sentinel head
         let mut nodes: Vec<LruNode> = (0..l)
-            .map(|_| LruNode { prev: NONE, next: NONE })
+            .map(|_| LruNode {
+                prev: NONE,
+                next: NONE,
+            })
             .collect();
         // Sentinel head points to itself (empty list)
         nodes.push(LruNode { prev: l, next: l });

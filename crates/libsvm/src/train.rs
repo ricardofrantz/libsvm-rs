@@ -4,7 +4,7 @@
 //! and `SvmParameter`. Matches the original LIBSVM's `svm_train` function.
 
 use crate::qmatrix::{OneClassQ, SvcQ, SvrQ};
-use crate::solver::{Solver, SolverVariant, SolutionInfo};
+use crate::solver::{SolutionInfo, Solver, SolverVariant};
 use crate::types::*;
 
 /// Internal decision function result from one binary sub-problem.
@@ -25,13 +25,23 @@ fn solve_c_svc(
     let l = x.len();
     let mut alpha = vec![0.0; l];
     let p: Vec<f64> = vec![-1.0; l];
-    let y: Vec<i8> = labels.iter().map(|&v| if v > 0.0 { 1 } else { -1 }).collect();
+    let y: Vec<i8> = labels
+        .iter()
+        .map(|&v| if v > 0.0 { 1 } else { -1 })
+        .collect();
 
     let q = Box::new(SvcQ::new(x, param, &y));
     let si = Solver::solve(
         SolverVariant::Standard,
-        l, q, &p, &y, &mut alpha,
-        cp, cn, param.eps, param.shrinking,
+        l,
+        q,
+        &p,
+        &y,
+        &mut alpha,
+        cp,
+        cn,
+        param.eps,
+        param.shrinking,
     );
 
     // Multiply alpha by y to get signed coefficients
@@ -49,7 +59,10 @@ fn solve_nu_svc(
 ) -> (Vec<f64>, SolutionInfo) {
     let l = x.len();
     let nu = param.nu;
-    let y: Vec<i8> = labels.iter().map(|&v| if v > 0.0 { 1 } else { -1 }).collect();
+    let y: Vec<i8> = labels
+        .iter()
+        .map(|&v| if v > 0.0 { 1 } else { -1 })
+        .collect();
 
     // Initialize alpha: spread nu*l/2 among positive and negative samples
     let mut alpha = vec![0.0; l];
@@ -69,8 +82,15 @@ fn solve_nu_svc(
     let q = Box::new(SvcQ::new(x, param, &y));
     let mut si = Solver::solve(
         SolverVariant::Nu,
-        l, q, &p, &y, &mut alpha,
-        1.0, 1.0, param.eps, param.shrinking,
+        l,
+        q,
+        &p,
+        &y,
+        &mut alpha,
+        1.0,
+        1.0,
+        param.eps,
+        param.shrinking,
     );
 
     let r = si.r;
@@ -85,10 +105,7 @@ fn solve_nu_svc(
     (alpha, si)
 }
 
-fn solve_one_class(
-    x: &[Vec<SvmNode>],
-    param: &SvmParameter,
-) -> (Vec<f64>, SolutionInfo) {
+fn solve_one_class(x: &[Vec<SvmNode>], param: &SvmParameter) -> (Vec<f64>, SolutionInfo) {
     let l = x.len();
 
     // Initialize alpha: first n=floor(nu*l) at 1, fractional remainder, rest 0
@@ -106,8 +123,15 @@ fn solve_one_class(
     let q = Box::new(OneClassQ::new(x, param));
     let si = Solver::solve(
         SolverVariant::Standard,
-        l, q, &p, &y, &mut alpha,
-        1.0, 1.0, param.eps, param.shrinking,
+        l,
+        q,
+        &p,
+        &y,
+        &mut alpha,
+        1.0,
+        1.0,
+        param.eps,
+        param.shrinking,
     );
 
     (alpha, si)
@@ -133,8 +157,15 @@ fn solve_epsilon_svr(
     let q = Box::new(SvrQ::new(x, param));
     let si = Solver::solve(
         SolverVariant::Standard,
-        2 * l, q, &linear_term, &y, &mut alpha2,
-        param.c, param.c, param.eps, param.shrinking,
+        2 * l,
+        q,
+        &linear_term,
+        &y,
+        &mut alpha2,
+        param.c,
+        param.c,
+        param.eps,
+        param.shrinking,
     );
 
     let mut alpha = vec![0.0; l];
@@ -172,8 +203,15 @@ fn solve_nu_svr(
     let q = Box::new(SvrQ::new(x, param));
     let si = Solver::solve(
         SolverVariant::Nu,
-        2 * l, q, &linear_term, &y, &mut alpha2,
-        c, c, param.eps, param.shrinking,
+        2 * l,
+        q,
+        &linear_term,
+        &y,
+        &mut alpha2,
+        c,
+        c,
+        param.eps,
+        param.shrinking,
     );
 
     let mut alpha = vec![0.0; l];
@@ -205,17 +243,21 @@ fn svm_train_one(
 
     // Count SVs
     let n_sv = alpha.iter().filter(|a| a.abs() > 0.0).count();
-    let n_bsv = alpha.iter().enumerate().filter(|&(i, a)| {
-        if a.abs() > 0.0 {
-            if labels[i] > 0.0 {
-                a.abs() >= si.upper_bound_p
+    let n_bsv = alpha
+        .iter()
+        .enumerate()
+        .filter(|&(i, a)| {
+            if a.abs() > 0.0 {
+                if labels[i] > 0.0 {
+                    a.abs() >= si.upper_bound_p
+                } else {
+                    a.abs() >= si.upper_bound_n
+                }
             } else {
-                a.abs() >= si.upper_bound_n
+                false
             }
-        } else {
-            false
-        }
-    }).count();
+        })
+        .count();
     crate::info(&format!("nSV = {}, nBSV = {}\n", n_sv, n_bsv));
 
     DecisionFunction { alpha, rho: si.rho }
@@ -280,7 +322,13 @@ fn svm_group_classes(labels: &[f64]) -> GroupInfo {
         start_copy[cls] += 1;
     }
 
-    GroupInfo { nr_class, label: label_list, start, count, perm }
+    GroupInfo {
+        nr_class,
+        label: label_list,
+        start,
+        count,
+        perm,
+    }
 }
 
 // ─── svm_train ──────────────────────────────────────────────────────
@@ -293,7 +341,9 @@ pub fn svm_train(problem: &SvmProblem, param: &SvmParameter) -> SvmModel {
     // Compute effective gamma if zero
     let mut param = param.clone();
     if param.gamma == 0.0 && !problem.instances.is_empty() {
-        let max_index = problem.instances.iter()
+        let max_index = problem
+            .instances
+            .iter()
             .flat_map(|inst| inst.iter())
             .map(|n| n.index)
             .max()
@@ -307,9 +357,7 @@ pub fn svm_train(problem: &SvmProblem, param: &SvmParameter) -> SvmModel {
         SvmType::OneClass | SvmType::EpsilonSvr | SvmType::NuSvr => {
             train_regression_or_one_class(problem, &param)
         }
-        SvmType::CSvc | SvmType::NuSvc => {
-            train_classification(problem, &param)
-        }
+        SvmType::CSvc | SvmType::NuSvc => train_classification(problem, &param),
     }
 }
 
@@ -347,13 +395,10 @@ fn train_regression_or_one_class(problem: &SvmProblem, param: &SvmParameter) -> 
     if param.probability {
         match param.svm_type {
             SvmType::EpsilonSvr | SvmType::NuSvr => {
-                model.prob_a = vec![
-                    crate::probability::svm_svr_probability(problem, param)
-                ];
+                model.prob_a = vec![crate::probability::svm_svr_probability(problem, param)];
             }
             SvmType::OneClass => {
-                if let Some(marks) =
-                    crate::probability::svm_one_class_probability(problem, &model)
+                if let Some(marks) = crate::probability::svm_one_class_probability(problem, &model)
                 {
                     model.prob_density_marks = marks;
                 }
@@ -429,7 +474,10 @@ fn train_classification(problem: &SvmProblem, param: &SvmParameter) -> SvmModel 
                     instances: sub_x.clone(),
                 };
                 let (pa, pb) = crate::probability::svm_binary_svc_probability(
-                    &sub_prob, param, weighted_c[i], weighted_c[j],
+                    &sub_prob,
+                    param,
+                    weighted_c[i],
+                    weighted_c[j],
                 );
                 prob_a.push(pa);
                 prob_b.push(pb);
@@ -582,14 +630,16 @@ mod tests {
         assert!(
             sv_diff <= 2,
             "SV count mismatch: Rust={}, C={}",
-            model.sv.len(), ref_model.sv.len()
+            model.sv.len(),
+            ref_model.sv.len()
         );
 
         // Same rho (within tolerance)
         assert!(
             (model.rho[0] - ref_model.rho[0]).abs() < 1e-4,
             "rho mismatch: Rust={}, C={}",
-            model.rho[0], ref_model.rho[0]
+            model.rho[0],
+            ref_model.rho[0]
         );
 
         // Predictions should match on training data
@@ -629,7 +679,7 @@ mod tests {
         let param = SvmParameter {
             svm_type: SvmType::CSvc,
             kernel_type: KernelType::Rbf,
-            gamma: 0.25,  // 1/num_features = 1/4
+            gamma: 0.25, // 1/num_features = 1/4
             c: 1.0,
             cache_size: 100.0,
             eps: 0.001,
@@ -661,6 +711,40 @@ mod tests {
         assert!(
             accuracy > 0.95,
             "iris accuracy {:.2}% too low (expected >95%)",
+            accuracy * 100.0
+        );
+    }
+
+    #[test]
+    fn train_c_svc_precomputed_kernel() {
+        let problem = load_problem(&data_dir().join("heart_scale.precomputed")).unwrap();
+        let param = SvmParameter {
+            svm_type: SvmType::CSvc,
+            kernel_type: KernelType::Precomputed,
+            c: 1.0,
+            cache_size: 100.0,
+            eps: 0.001,
+            shrinking: true,
+            ..Default::default()
+        };
+
+        let model = svm_train(&problem, &param);
+
+        assert_eq!(model.nr_class, 2);
+        assert!(!model.sv.is_empty(), "model has no support vectors");
+
+        // Sanity-check predictions on training data.
+        let mut correct = 0;
+        for (i, instance) in problem.instances.iter().enumerate() {
+            let pred = predict(&model, instance);
+            if pred == problem.labels[i] {
+                correct += 1;
+            }
+        }
+        let accuracy = correct as f64 / problem.labels.len() as f64;
+        assert!(
+            accuracy > 0.70,
+            "precomputed-kernel accuracy {:.2}% too low",
             accuracy * 100.0
         );
     }

@@ -37,24 +37,60 @@ fn kernel_deterministic() {
     // Generate a small problem with random sparse features.
     let instances = vec![
         vec![
-            SvmNode { index: 1, value: 2.5 },
-            SvmNode { index: 5, value: -1.3 },
-            SvmNode { index: 18, value: 0.7 },
+            SvmNode {
+                index: 1,
+                value: 2.5,
+            },
+            SvmNode {
+                index: 5,
+                value: -1.3,
+            },
+            SvmNode {
+                index: 18,
+                value: 0.7,
+            },
         ],
         vec![
-            SvmNode { index: 2, value: 1.1 },
-            SvmNode { index: 8, value: 3.2 },
-            SvmNode { index: 15, value: -2.1 },
+            SvmNode {
+                index: 2,
+                value: 1.1,
+            },
+            SvmNode {
+                index: 8,
+                value: 3.2,
+            },
+            SvmNode {
+                index: 15,
+                value: -2.1,
+            },
         ],
         vec![
-            SvmNode { index: 3, value: -0.5 },
-            SvmNode { index: 10, value: 1.9 },
-            SvmNode { index: 20, value: 2.8 },
+            SvmNode {
+                index: 3,
+                value: -0.5,
+            },
+            SvmNode {
+                index: 10,
+                value: 1.9,
+            },
+            SvmNode {
+                index: 20,
+                value: 2.8,
+            },
         ],
         vec![
-            SvmNode { index: 1, value: 1.2 },
-            SvmNode { index: 4, value: -1.5 },
-            SvmNode { index: 12, value: 0.3 },
+            SvmNode {
+                index: 1,
+                value: 1.2,
+            },
+            SvmNode {
+                index: 4,
+                value: -1.5,
+            },
+            SvmNode {
+                index: 12,
+                value: 0.3,
+            },
         ],
     ];
 

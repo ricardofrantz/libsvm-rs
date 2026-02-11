@@ -210,10 +210,7 @@ impl<'a> Solver<'a> {
             r,
         };
 
-        crate::info(&format!(
-            "optimization finished, #iter = {}\n",
-            iter
-        ));
+        crate::info(&format!("optimization finished, #iter = {}\n", iter));
 
         si
     }
@@ -222,7 +219,11 @@ impl<'a> Solver<'a> {
 
     #[inline]
     fn get_c(&self, i: usize) -> f64 {
-        if self.y[i] > 0 { self.cp } else { self.cn }
+        if self.y[i] > 0 {
+            self.cp
+        } else {
+            self.cn
+        }
     }
 
     #[inline]
@@ -350,8 +351,8 @@ impl<'a> Solver<'a> {
                         gmax2 = self.g[j];
                     }
                     if grad_diff > 0.0 {
-                        let quad_coef = self.qd[i] + self.qd[j]
-                            - 2.0 * (self.y[i] as f64) * q_i[j] as f64;
+                        let quad_coef =
+                            self.qd[i] + self.qd[j] - 2.0 * (self.y[i] as f64) * q_i[j] as f64;
                         let obj_diff = if quad_coef > 0.0 {
                             -(grad_diff * grad_diff) / quad_coef
                         } else {
@@ -369,8 +370,8 @@ impl<'a> Solver<'a> {
                     gmax2 = -self.g[j];
                 }
                 if grad_diff > 0.0 {
-                    let quad_coef = self.qd[i] + self.qd[j]
-                        + 2.0 * (self.y[i] as f64) * q_i[j] as f64;
+                    let quad_coef =
+                        self.qd[i] + self.qd[j] + 2.0 * (self.y[i] as f64) * q_i[j] as f64;
                     let obj_diff = if quad_coef > 0.0 {
                         -(grad_diff * grad_diff) / quad_coef
                     } else {
@@ -697,13 +698,21 @@ impl<'a> Solver<'a> {
         for i in 0..self.active_size {
             if !self.is_upper_bound(i) {
                 if self.y[i] == 1 {
-                    if -self.g[i] > gmax1 { gmax1 = -self.g[i]; }
-                } else if -self.g[i] > gmax4 { gmax4 = -self.g[i]; }
+                    if -self.g[i] > gmax1 {
+                        gmax1 = -self.g[i];
+                    }
+                } else if -self.g[i] > gmax4 {
+                    gmax4 = -self.g[i];
+                }
             }
             if !self.is_lower_bound(i) {
                 if self.y[i] == 1 {
-                    if self.g[i] > gmax2 { gmax2 = self.g[i]; }
-                } else if self.g[i] > gmax3 { gmax3 = self.g[i]; }
+                    if self.g[i] > gmax2 {
+                        gmax2 = self.g[i];
+                    }
+                } else if self.g[i] > gmax3 {
+                    gmax3 = self.g[i];
+                }
             }
         }
 

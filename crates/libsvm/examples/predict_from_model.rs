@@ -9,8 +9,14 @@ fn main() {
     set_quiet(true);
 
     let args: Vec<String> = std::env::args().collect();
-    let model_path = args.get(1).map(|s| s.as_str()).unwrap_or("heart_scale.model");
-    let test_path = args.get(2).map(|s| s.as_str()).unwrap_or("data/heart_scale");
+    let model_path = args
+        .get(1)
+        .map(|s| s.as_str())
+        .unwrap_or("heart_scale.model");
+    let test_path = args
+        .get(2)
+        .map(|s| s.as_str())
+        .unwrap_or("data/heart_scale");
 
     let model = load_model(Path::new(model_path)).expect("failed to load model");
     let problem = load_problem(Path::new(test_path)).expect("failed to load test data");
@@ -23,5 +29,10 @@ fn main() {
         .count();
 
     let acc = correct as f64 / problem.labels.len() as f64;
-    println!("Accuracy: {:.2}% ({}/{})", acc * 100.0, correct, problem.labels.len());
+    println!(
+        "Accuracy: {:.2}% ({}/{})",
+        acc * 100.0,
+        correct,
+        problem.labels.len()
+    );
 }

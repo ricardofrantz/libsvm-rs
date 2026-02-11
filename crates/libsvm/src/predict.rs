@@ -30,7 +30,11 @@ pub fn predict_values(model: &SvmModel, x: &[SvmNode], dec_values: &mut [f64]) -
             dec_values[0] = sum;
 
             if model.param.svm_type == SvmType::OneClass {
-                if sum > 0.0 { 1.0 } else { -1.0 }
+                if sum > 0.0 {
+                    1.0
+                } else {
+                    -1.0
+                }
             } else {
                 sum
             }
@@ -105,9 +109,7 @@ pub fn predict_values(model: &SvmModel, x: &[SvmNode], dec_values: &mut [f64]) -
 pub fn predict(model: &SvmModel, x: &[SvmNode]) -> f64 {
     let n = match model.param.svm_type {
         SvmType::OneClass | SvmType::EpsilonSvr | SvmType::NuSvr => 1,
-        SvmType::CSvc | SvmType::NuSvc => {
-            model.nr_class * (model.nr_class - 1) / 2
-        }
+        SvmType::CSvc | SvmType::NuSvc => model.nr_class * (model.nr_class - 1) / 2,
     };
     let mut dec_values = vec![0.0; n];
     predict_values(model, x, &mut dec_values)
@@ -130,9 +132,7 @@ pub fn predict(model: &SvmModel, x: &[SvmNode]) -> f64 {
 #[allow(clippy::needless_range_loop)]
 pub fn predict_probability(model: &SvmModel, x: &[SvmNode]) -> Option<(f64, Vec<f64>)> {
     match model.param.svm_type {
-        SvmType::CSvc | SvmType::NuSvc
-            if !model.prob_a.is_empty() && !model.prob_b.is_empty() =>
-        {
+        SvmType::CSvc | SvmType::NuSvc if !model.prob_a.is_empty() && !model.prob_b.is_empty() => {
             let nr_class = model.nr_class;
             let n_pairs = nr_class * (nr_class - 1) / 2;
             let mut dec_values = vec![0.0; n_pairs];

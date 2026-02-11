@@ -24,8 +24,7 @@ fn main() {
     println!("Labels: {:?}", model.label);
     for i in 0..problem.instances.len().min(10) {
         let x = &problem.instances[i];
-        let (pred, probs) = predict_probability(&model, x)
-            .expect("probability prediction failed");
+        let (pred, probs) = predict_probability(&model, x).expect("probability prediction failed");
 
         print!("i={:<3} true={:<3} pred={:<3}", i, problem.labels[i], pred);
         for (cls, p) in model.label.iter().zip(probs.iter()) {

@@ -18,6 +18,27 @@ options:
     process::exit(1);
 }
 
+const MAX_FEATURE_INDEX: i32 = 10_000_000;
+
+fn validate_feature_index_or_exit(idx: i32) {
+    if !(1..=MAX_FEATURE_INDEX).contains(&idx) {
+        eprintln!(
+            "feature index {} out of valid range [1, {}]",
+            idx, MAX_FEATURE_INDEX
+        );
+        process::exit(1);
+    }
+}
+
+fn parse_feature_index_or_exit(idx_str: &str) -> i32 {
+    let idx = idx_str.parse::<i32>().unwrap_or_else(|_| {
+        eprintln!("invalid feature index: {}", idx_str);
+        process::exit(1);
+    });
+    validate_feature_index_or_exit(idx);
+    idx
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
@@ -87,7 +108,6 @@ fn main() {
 
     // ── Pass 1: find max_index ───────────────────────────────────────
     let mut max_index: i32 = 0;
-    let mut min_index: i32 = 1;
     let mut num_nonzeros: usize = 0;
 
     // If restoring, scan restore file for max_index first
@@ -108,9 +128,7 @@ fn main() {
             // If first char is 'x', skip that line too; otherwise it was 'x' line
             if !first_line.starts_with('y') {
                 // First line was the 'x' line, next is lower upper
-                if let Some(Ok(_)) = lines.next() {
-                    // lower upper line consumed
-                }
+                let _ = lines.next();
             } else {
                 // Already consumed 'y' + 2 lines, need 'x' line + lower/upper line
                 lines.next(); // 'x'
@@ -120,9 +138,8 @@ fn main() {
         for line in lines.map_while(Result::ok) {
             let parts: Vec<&str> = line.split_whitespace().collect();
             if let Some(idx_str) = parts.first() {
-                if let Ok(idx) = idx_str.parse::<i32>() {
-                    max_index = max_index.max(idx);
-                }
+                let idx = parse_feature_index_or_exit(idx_str);
+                max_index = max_index.max(idx);
             }
         }
     }
@@ -139,20 +156,11 @@ fn main() {
         parts.next(); // skip label
         for token in parts {
             if let Some((idx_str, _)) = token.split_once(':') {
-                if let Ok(idx) = idx_str.parse::<i32>() {
-                    max_index = max_index.max(idx);
-                    min_index = min_index.min(idx);
-                    num_nonzeros += 1;
-                }
+                let idx = parse_feature_index_or_exit(idx_str);
+                max_index = max_index.max(idx);
+                num_nonzeros += 1;
             }
         }
-    }
-
-    if min_index < 1 {
-        eprintln!(
-            "WARNING: minimal feature index is {}, but indices should start from 1",
-            min_index
-        );
     }
 
     // ── Pass 2: find min/max per feature ─────────────────────────────
@@ -179,7 +187,7 @@ fn main() {
         let mut next_index = 1i32;
         for token in parts {
             if let Some((idx_str, val_str)) = token.split_once(':') {
-                let idx: i32 = idx_str.parse().unwrap_or(0);
+                let idx = parse_feature_index_or_exit(idx_str);
                 let value: f64 = val_str.parse().unwrap_or(0.0);
 
                 // Implicit zeros for skipped indices
@@ -257,7 +265,7 @@ fn main() {
                 if parts.len() != 3 {
                     continue;
                 }
-                let idx: i32 = parts[0].parse().unwrap_or(0);
+                let idx = parse_feature_index_or_exit(parts[0]);
                 let fmin: f64 = parts[1].parse().unwrap_or(0.0);
                 let fmax: f64 = parts[2].parse().unwrap_or(0.0);
 
@@ -321,12 +329,6 @@ fn main() {
                 .unwrap();
             }
         }
-        if min_index < 1 {
-            eprintln!(
-                "WARNING: scaling factors with indices smaller than 1 are not stored to the file {}.",
-                sfile
-            );
-        }
     }
 
     // ── Pass 3: scale and output ─────────────────────────────────────
@@ -347,8 +349,7 @@ fn main() {
                     } else if target == y_max {
                         target = y_upper;
                     } else {
-                        target =
-                            y_lower + (y_upper - y_lower) * (target - y_min) / (y_max - y_min);
+                        target = y_lower + (y_upper - y_lower) * (target - y_min) / (y_max - y_min);
                     }
                 }
                 print!("{} ", format_17g(target));
@@ -358,21 +359,45 @@ fn main() {
         let mut next_index = 1i32;
         for token in parts {
             if let Some((idx_str, val_str)) = token.split_once(':') {
-                let idx: i32 = idx_str.parse().unwrap_or(0);
+                let idx = parse_feature_index_or_exit(idx_str);
                 let value: f64 = val_str.parse().unwrap_or(0.0);
 
                 // Output implicit zeros for skipped features
                 for j in next_index..idx {
-                    output_feature(j, 0.0, &feature_min, &feature_max, lower, upper, &mut new_num_nonzeros);
+                    output_feature(
+                        j,
+                        0.0,
+                        &feature_min,
+                        &feature_max,
+                        lower,
+                        upper,
+                        &mut new_num_nonzeros,
+                    );
                 }
 
-                output_feature(idx, value, &feature_min, &feature_max, lower, upper, &mut new_num_nonzeros);
+                output_feature(
+                    idx,
+                    value,
+                    &feature_min,
+                    &feature_max,
+                    lower,
+                    upper,
+                    &mut new_num_nonzeros,
+                );
                 next_index = idx + 1;
             }
         }
         // Trailing features
         for j in next_index..=max_index {
-            output_feature(j, 0.0, &feature_min, &feature_max, lower, upper, &mut new_num_nonzeros);
+            output_feature(
+                j,
+                0.0,
+                &feature_min,
+                &feature_max,
+                lower,
+                upper,
+                &mut new_num_nonzeros,
+            );
         }
 
         println!();

@@ -34,18 +34,18 @@ pub(crate) fn info(msg: &str) {
     }
 }
 
-pub mod types;
+pub mod cache;
 pub mod error;
 pub mod io;
 pub mod kernel;
-pub mod cache;
 pub mod qmatrix;
 pub mod solver;
 pub mod train;
+pub mod types;
 
+pub mod cross_validation;
 pub mod predict;
 pub mod probability;
-pub mod cross_validation;
 
 pub use error::SvmError;
 pub use types::*;

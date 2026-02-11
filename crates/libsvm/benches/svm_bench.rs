@@ -6,7 +6,10 @@ use libsvm_rs::{KernelType, SvmParameter, SvmType};
 use std::path::Path;
 
 fn load_heart_scale() -> libsvm_rs::SvmProblem {
-    let path = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/heart_scale"));
+    let path = Path::new(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../data/heart_scale"
+    ));
     load_problem(path).expect("failed to load heart_scale dataset")
 }
 

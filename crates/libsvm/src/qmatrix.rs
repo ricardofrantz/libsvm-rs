@@ -46,7 +46,12 @@ impl<'a> SvcQ<'a> {
         let cache = Cache::new(l, (param.cache_size * 1048576.0) as usize);
         let qd: Vec<f64> = (0..l).map(|i| kernel.evaluate(i, i)).collect();
         let y = y.to_vec();
-        Self { kernel, cache, y, qd }
+        Self {
+            kernel,
+            cache,
+            y,
+            qd,
+        }
     }
 }
 
@@ -221,7 +226,10 @@ mod tests {
     use crate::types::{KernelType, SvmNode, SvmParameter};
 
     fn make_nodes(pairs: &[(i32, f64)]) -> Vec<SvmNode> {
-        pairs.iter().map(|&(i, v)| SvmNode { index: i, value: v }).collect()
+        pairs
+            .iter()
+            .map(|&(i, v)| SvmNode { index: i, value: v })
+            .collect()
     }
 
     fn default_rbf_param() -> SvmParameter {
@@ -274,7 +282,12 @@ mod tests {
                 assert!(
                     (matrix[i][j] - matrix[j][i]).abs() < 1e-6,
                     "Q[{},{}]={} != Q[{},{}]={}",
-                    i, j, matrix[i][j], j, i, matrix[j][i]
+                    i,
+                    j,
+                    matrix[i][j],
+                    j,
+                    i,
+                    matrix[j][i]
                 );
             }
         }
@@ -287,10 +300,7 @@ mod tests {
 
     #[test]
     fn one_class_q_no_sign_scaling() {
-        let data = vec![
-            make_nodes(&[(1, 1.0)]),
-            make_nodes(&[(1, 2.0)]),
-        ];
+        let data = vec![make_nodes(&[(1, 1.0)]), make_nodes(&[(1, 2.0)])];
         let param = default_rbf_param();
         let mut q = OneClassQ::new(&data, &param);
 
@@ -304,10 +314,7 @@ mod tests {
 
     #[test]
     fn svr_q_double_buffer() {
-        let data = vec![
-            make_nodes(&[(1, 1.0)]),
-            make_nodes(&[(1, 2.0)]),
-        ];
+        let data = vec![make_nodes(&[(1, 1.0)]), make_nodes(&[(1, 2.0)])];
         let param = default_rbf_param();
         let mut q = SvrQ::new(&data, &param);
         let l2 = 2 * data.len(); // 4

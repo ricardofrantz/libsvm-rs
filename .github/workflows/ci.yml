@@ -58,6 +58,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: Validate LIBSVM reference lock
+        run: bash scripts/check_libsvm_reference_lock.sh
       - name: Build CLI tools
         run: cargo build --release -p svm-train-rs -p svm-predict-rs
       - name: Run reference comparisons
@@ -115,8 +117,10 @@ jobs:
           key: coverage
       - name: Install cargo-llvm-cov
         run: cargo install cargo-llvm-cov --locked
+      - name: Enforce coverage thresholds
+        run: bash scripts/check_coverage_thresholds.sh
       - name: Generate coverage
-        run: cargo llvm-cov --all-features --lcov --output-path lcov.info
+        run: cargo llvm-cov --workspace --all-features --lcov --output-path lcov.info
       - name: Upload to Codecov
         uses: codecov/codecov-action@v5
         with:
@@ -130,5 +134,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: Run benchmarks
-        run: cargo bench --all-features
+      - name: Run Rust vs C benchmark matrix
+        run: python3 scripts/benchmark_compare.py
+      - name: Upload benchmark artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-report
+          path: |
+            reference/benchmark_report.md
+            reference/benchmark_results.json

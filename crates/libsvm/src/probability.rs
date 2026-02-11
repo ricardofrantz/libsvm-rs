@@ -7,14 +7,39 @@
 use crate::predict::predict_values;
 use crate::train::svm_train;
 use crate::types::{SvmModel, SvmParameter, SvmProblem};
+use std::sync::{Mutex, OnceLock};
 
 // ─── RNG helper ──────────────────────────────────────────────────────
 
-fn rng_next(state: &mut u64) -> usize {
-    *state = state
+#[cfg(target_os = "macos")]
+fn c_rand() -> usize {
+    static STATE: OnceLock<Mutex<u32>> = OnceLock::new();
+    let state = STATE.get_or_init(|| Mutex::new(1));
+    let mut guard = state.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+
+    // macOS/BSD libc rand() uses Park-Miller (MINSTD) with 31-bit modulus.
+    let hi = *guard / 127_773;
+    let lo = *guard % 127_773;
+    let test = 16_807_i64 * lo as i64 - 2_836_i64 * hi as i64;
+    *guard = if test > 0 {
+        test as u32
+    } else {
+        (test + 2_147_483_647) as u32
+    };
+    *guard as usize
+}
+
+#[cfg(not(target_os = "macos"))]
+fn c_rand() -> usize {
+    static STATE: OnceLock<Mutex<u64>> = OnceLock::new();
+    let state = STATE.get_or_init(|| Mutex::new(1));
+    let mut guard = state.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+
+    // Deterministic fallback for non-macOS builds.
+    *guard = guard
         .wrapping_mul(6364136223846793005)
         .wrapping_add(1442695040888963407);
-    (*state >> 33) as usize
+    (*guard >> 33) as usize
 }
 
 // ─── Platt scaling ───────────────────────────────────────────────────
@@ -205,9 +230,7 @@ pub fn multiclass_probability(k: usize, r: &[Vec<f64>], p: &mut [f64]) {
         for t in 0..k {
             let diff = (-qp[t] + p_qp) / q_mat[t][t];
             p[t] += diff;
-            p_qp = (p_qp + diff * (diff * q_mat[t][t] + 2.0 * qp[t]))
-                / (1.0 + diff)
-                / (1.0 + diff);
+            p_qp = (p_qp + diff * (diff * q_mat[t][t] + 2.0 * qp[t])) / (1.0 + diff) / (1.0 + diff);
             for j in 0..k {
                 qp[j] = (qp[j] + diff * q_mat[t][j]) / (1.0 + diff);
                 p[j] /= 1.0 + diff;
@@ -232,14 +255,13 @@ pub fn svm_binary_svc_probability(
     cn: f64,
 ) -> (f64, f64) {
     let l = prob.labels.len();
-    let nr_fold = 5;
+    let nr_fold = 5.min(l.max(1));
     let mut perm: Vec<usize> = (0..l).collect();
     let mut dec_values = vec![0.0; l];
 
     // Random shuffle (Fisher-Yates)
-    let mut rng: u64 = 1;
     for i in 0..l {
-        let j = i + rng_next(&mut rng) % (l - i);
+        let j = i + c_rand() % (l - i);
         perm.swap(i, j);
     }
 
@@ -321,7 +343,12 @@ pub fn predict_one_class_probability(prob_density_marks: &[f64], dec_value: f64)
         return 0.999;
     }
 
-    for (i, &mark) in prob_density_marks.iter().enumerate().skip(1).take(nr_marks - 1) {
+    for (i, &mark) in prob_density_marks
+        .iter()
+        .enumerate()
+        .skip(1)
+        .take(nr_marks - 1)
+    {
         if dec_value < mark {
             return i as f64 / nr_marks as f64;
         }
@@ -337,10 +364,7 @@ pub fn predict_one_class_probability(prob_density_marks: &[f64], dec_value: f64)
 /// negative decision values.
 ///
 /// Matches LIBSVM's `svm_one_class_probability`.
-pub fn svm_one_class_probability(
-    prob: &SvmProblem,
-    model: &SvmModel,
-) -> Option<Vec<f64>> {
+pub fn svm_one_class_probability(prob: &SvmProblem, model: &SvmModel) -> Option<Vec<f64>> {
     let l = prob.labels.len();
     let mut dec_values = vec![0.0; l];
 
@@ -446,6 +470,17 @@ pub fn svm_svr_probability(prob: &SvmProblem, param: &SvmParameter) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::io::load_problem;
+    use crate::train::svm_train;
+    use crate::types::{KernelType, SvmNode, SvmParameter, SvmProblem, SvmType};
+    use std::path::PathBuf;
+
+    fn data_dir() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("data")
+    }
 
     #[test]
     fn sigmoid_predict_symmetric() {
@@ -500,5 +535,95 @@ mod tests {
         assert!((predict_one_class_probability(&marks, 1.0) - 0.999).abs() < 1e-10);
         let mid = predict_one_class_probability(&marks, 0.0);
         assert!(mid > 0.0 && mid < 1.0);
+    }
+
+    #[test]
+    fn predict_one_class_probability_empty_marks_is_half() {
+        let p = predict_one_class_probability(&[], 0.25);
+        assert!((p - 0.5).abs() < 1e-12);
+    }
+
+    #[test]
+    fn binary_svc_probability_is_finite() {
+        let prob = load_problem(&data_dir().join("heart_scale")).unwrap();
+        let param = SvmParameter {
+            svm_type: SvmType::CSvc,
+            kernel_type: KernelType::Rbf,
+            gamma: 1.0 / 13.0,
+            ..Default::default()
+        };
+
+        let (a, b) = svm_binary_svc_probability(&prob, &param, 1.0, 1.0);
+        assert!(a.is_finite());
+        assert!(b.is_finite());
+    }
+
+    #[test]
+    fn one_class_probability_marks_generated_for_large_problem() {
+        let prob = load_problem(&data_dir().join("heart_scale")).unwrap();
+        let param = SvmParameter {
+            svm_type: SvmType::OneClass,
+            kernel_type: KernelType::Rbf,
+            gamma: 1.0 / 13.0,
+            nu: 0.5,
+            ..Default::default()
+        };
+        let model = svm_train(&prob, &param);
+
+        let marks = svm_one_class_probability(&prob, &model).expect("expected marks");
+        assert_eq!(marks.len(), 10);
+        for pair in marks.windows(2) {
+            assert!(pair[0] <= pair[1]);
+        }
+    }
+
+    #[test]
+    fn one_class_probability_returns_none_when_too_few_samples() {
+        let prob = SvmProblem {
+            labels: vec![1.0, 1.0, 1.0, 1.0],
+            instances: vec![
+                vec![SvmNode {
+                    index: 1,
+                    value: 0.0,
+                }],
+                vec![SvmNode {
+                    index: 1,
+                    value: 1.0,
+                }],
+                vec![SvmNode {
+                    index: 1,
+                    value: 2.0,
+                }],
+                vec![SvmNode {
+                    index: 1,
+                    value: 3.0,
+                }],
+            ],
+        };
+        let param = SvmParameter {
+            svm_type: SvmType::OneClass,
+            kernel_type: KernelType::Linear,
+            nu: 0.5,
+            ..Default::default()
+        };
+        let model = svm_train(&prob, &param);
+        assert!(svm_one_class_probability(&prob, &model).is_none());
+    }
+
+    #[test]
+    fn svr_probability_is_positive_and_finite() {
+        let prob = load_problem(&data_dir().join("housing_scale")).unwrap();
+        let param = SvmParameter {
+            svm_type: SvmType::EpsilonSvr,
+            kernel_type: KernelType::Rbf,
+            gamma: 1.0 / 13.0,
+            c: 1.0,
+            p: 0.1,
+            ..Default::default()
+        };
+
+        let sigma = svm_svr_probability(&prob, &param);
+        assert!(sigma.is_finite());
+        assert!(sigma > 0.0);
     }
 }

@@ -206,18 +206,13 @@ fn main() {
     }
 }
 
-fn do_cross_validation(
-    problem: &libsvm_rs::SvmProblem,
-    param: &SvmParameter,
-    nr_fold: usize,
-) {
+fn do_cross_validation(problem: &libsvm_rs::SvmProblem, param: &SvmParameter, nr_fold: usize) {
     let target = svm_cross_validation(problem, param, nr_fold);
     let l = problem.labels.len();
 
     if matches!(param.svm_type, SvmType::EpsilonSvr | SvmType::NuSvr) {
         let mut total_error = 0.0;
-        let (mut sumv, mut sumy, mut sumvv, mut sumyy, mut sumvy) =
-            (0.0, 0.0, 0.0, 0.0, 0.0);
+        let (mut sumv, mut sumy, mut sumvv, mut sumyy, mut sumvy) = (0.0, 0.0, 0.0, 0.0, 0.0);
         for (v, y) in target.iter().zip(problem.labels.iter()) {
             total_error += (v - y) * (v - y);
             sumv += v;

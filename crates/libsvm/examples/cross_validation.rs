@@ -49,6 +49,8 @@ fn main() {
 
     println!(
         "\nBest: C={:.1}, gamma={:.2}, CV accuracy={:.2}%",
-        best_c, best_g, best_acc * 100.0
+        best_c,
+        best_g,
+        best_acc * 100.0
     );
 }

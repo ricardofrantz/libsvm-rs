@@ -248,9 +248,97 @@ pub struct SvmModel {
     pub n_sv: Vec<usize>,
 }
 
+impl SvmModel {
+    /// Return the SVM type used by the model.
+    pub fn svm_type(&self) -> SvmType {
+        self.param.svm_type
+    }
+
+    /// Return number of classes.
+    pub fn class_count(&self) -> usize {
+        self.nr_class
+    }
+
+    /// Return class labels in internal one-vs-one order.
+    pub fn labels(&self) -> &[i32] {
+        &self.label
+    }
+
+    /// Return original 1-based support-vector indices.
+    pub fn support_vector_indices(&self) -> &[usize] {
+        &self.sv_indices
+    }
+
+    /// Return total number of support vectors.
+    pub fn support_vector_count(&self) -> usize {
+        self.sv.len()
+    }
+
+    /// Return SVR sigma when a probability-capable SVR model is available.
+    pub fn svr_probability(&self) -> Option<f64> {
+        match self.param.svm_type {
+            SvmType::EpsilonSvr | SvmType::NuSvr => self.prob_a.first().copied(),
+            _ => None,
+        }
+    }
+
+    /// Check whether the model contains probability metadata.
+    pub fn has_probability_model(&self) -> bool {
+        match self.param.svm_type {
+            SvmType::CSvc | SvmType::NuSvc => !self.prob_a.is_empty() && !self.prob_b.is_empty(),
+            SvmType::EpsilonSvr | SvmType::NuSvr => !self.prob_a.is_empty(),
+            SvmType::OneClass => !self.prob_density_marks.is_empty(),
+        }
+    }
+}
+
+/// C-API style helper matching LIBSVM's `svm_get_svm_type`.
+pub fn svm_get_svm_type(model: &SvmModel) -> SvmType {
+    model.svm_type()
+}
+
+/// C-API style helper matching LIBSVM's `svm_get_nr_class`.
+pub fn svm_get_nr_class(model: &SvmModel) -> usize {
+    model.class_count()
+}
+
+/// C-API style helper matching LIBSVM's `svm_get_labels`.
+pub fn svm_get_labels(model: &SvmModel) -> &[i32] {
+    model.labels()
+}
+
+/// C-API style helper matching LIBSVM's `svm_get_sv_indices`.
+pub fn svm_get_sv_indices(model: &SvmModel) -> &[usize] {
+    model.support_vector_indices()
+}
+
+/// C-API style helper matching LIBSVM's `svm_get_nr_sv`.
+pub fn svm_get_nr_sv(model: &SvmModel) -> usize {
+    model.support_vector_count()
+}
+
+/// C-API style helper matching LIBSVM's `svm_get_svr_probability`.
+pub fn svm_get_svr_probability(model: &SvmModel) -> Option<f64> {
+    model.svr_probability()
+}
+
+/// C-API style helper matching LIBSVM's `svm_check_probability_model`.
+pub fn svm_check_probability_model(model: &SvmModel) -> bool {
+    model.has_probability_model()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::train::svm_train;
+    use std::path::PathBuf;
+
+    fn data_dir() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("data")
+    }
 
     #[test]
     fn default_params_are_valid() {
@@ -359,5 +447,89 @@ mod tests {
         let err = check_parameter(&problem, &param);
         assert!(err.is_err());
         assert!(format!("{}", err.unwrap_err()).contains("infeasible"));
+    }
+
+    #[test]
+    fn c_api_style_model_helpers() {
+        let problem = crate::io::load_problem(&data_dir().join("heart_scale")).unwrap();
+        let param = SvmParameter {
+            gamma: 1.0 / 13.0,
+            ..Default::default()
+        };
+        let model = svm_train(&problem, &param);
+
+        assert_eq!(svm_get_svm_type(&model), SvmType::CSvc);
+        assert_eq!(svm_get_nr_class(&model), 2);
+        assert_eq!(svm_get_nr_sv(&model), model.sv.len());
+        assert_eq!(svm_get_labels(&model), model.label.as_slice());
+        assert_eq!(svm_get_sv_indices(&model), model.sv_indices.as_slice());
+        assert!(!svm_check_probability_model(&model));
+        assert_eq!(svm_get_svr_probability(&model), None);
+    }
+
+    #[test]
+    fn probability_helpers_by_svm_type() {
+        let svm = vec![SvmNode {
+            index: 1,
+            value: 1.0,
+        }];
+
+        let csvc_model = SvmModel {
+            param: SvmParameter {
+                svm_type: SvmType::CSvc,
+                ..Default::default()
+            },
+            nr_class: 2,
+            sv: vec![svm.clone()],
+            sv_coef: vec![vec![1.0]],
+            rho: vec![0.0],
+            prob_a: vec![1.0],
+            prob_b: vec![-0.5],
+            prob_density_marks: vec![],
+            sv_indices: vec![1],
+            label: vec![1, -1],
+            n_sv: vec![1, 0],
+        };
+        assert!(csvc_model.has_probability_model());
+        assert!(svm_check_probability_model(&csvc_model));
+        assert_eq!(svm_get_svr_probability(&csvc_model), None);
+
+        let eps_svr_model = SvmModel {
+            param: SvmParameter {
+                svm_type: SvmType::EpsilonSvr,
+                ..Default::default()
+            },
+            nr_class: 2,
+            sv: vec![svm.clone()],
+            sv_coef: vec![vec![0.8]],
+            rho: vec![0.0],
+            prob_a: vec![0.123],
+            prob_b: vec![],
+            prob_density_marks: vec![],
+            sv_indices: vec![1],
+            label: vec![],
+            n_sv: vec![],
+        };
+        assert!(eps_svr_model.has_probability_model());
+        assert_eq!(svm_get_svr_probability(&eps_svr_model), Some(0.123));
+
+        let one_class_model = SvmModel {
+            param: SvmParameter {
+                svm_type: SvmType::OneClass,
+                ..Default::default()
+            },
+            nr_class: 2,
+            sv: vec![svm],
+            sv_coef: vec![vec![1.0]],
+            rho: vec![0.0],
+            prob_a: vec![],
+            prob_b: vec![],
+            prob_density_marks: vec![0.1; 10],
+            sv_indices: vec![1],
+            label: vec![],
+            n_sv: vec![],
+        };
+        assert!(one_class_model.has_probability_model());
+        assert_eq!(svm_get_svr_probability(&one_class_model), None);
     }
 }
