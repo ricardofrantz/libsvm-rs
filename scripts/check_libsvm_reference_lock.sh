@@ -46,7 +46,7 @@ PY
 IFS=$'\t' read -r UPSTREAM_URL UPSTREAM_TAG UPSTREAM_TAG_OBJECT UPSTREAM_COMMIT LOCKED_VERSION <<< "${LOCK_TSV}"
 
 VENDOR_VERSION="$(
-    rg -n '^#define LIBSVM_VERSION[[:space:]]+[0-9]+' "${VENDOR_HEADER}" \
+    grep -E '^#define LIBSVM_VERSION[[:space:]]+[0-9]+' "${VENDOR_HEADER}" \
         | awk '{print $3}'
 )"
 

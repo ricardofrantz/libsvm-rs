@@ -68,7 +68,7 @@ if [[ -n "${UPSTREAM_TAG_OBJECT}" ]]; then
 fi
 
 VENDOR_VERSION="$(
-    rg -n '^#define LIBSVM_VERSION[[:space:]]+[0-9]+' "${SRC_DIR}/svm.h" \
+    grep -E '^#define LIBSVM_VERSION[[:space:]]+[0-9]+' "${SRC_DIR}/svm.h" \
         | awk '{print $3}'
 )"
 if [[ "${VENDOR_VERSION}" != "${LOCKED_VERSION}" ]]; then

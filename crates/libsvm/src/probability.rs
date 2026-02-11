@@ -15,7 +15,9 @@ use std::sync::{Mutex, OnceLock};
 fn c_rand() -> usize {
     static STATE: OnceLock<Mutex<u32>> = OnceLock::new();
     let state = STATE.get_or_init(|| Mutex::new(1));
-    let mut guard = state.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut guard = state
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
 
     // macOS/BSD libc rand() uses Park-Miller (MINSTD) with 31-bit modulus.
     let hi = *guard / 127_773;
@@ -33,7 +35,9 @@ fn c_rand() -> usize {
 fn c_rand() -> usize {
     static STATE: OnceLock<Mutex<u64>> = OnceLock::new();
     let state = STATE.get_or_init(|| Mutex::new(1));
-    let mut guard = state.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut guard = state
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
 
     // Deterministic fallback for non-macOS builds.
     *guard = guard
