@@ -161,11 +161,7 @@ fn cross_validation_missing_fold_count_uses_help() {
 #[test]
 fn random_cross_validation_flag_permutations() {
     let mut state = 0xA5A5_5A5A_FEED_F00Du64;
-    let base_chunks: Vec<Vec<&str>> = vec![
-        vec!["-q"],
-        vec!["-v", "3"],
-        vec!["-h", "1"],
-    ];
+    let base_chunks: Vec<Vec<&str>> = vec![vec!["-q"], vec!["-v", "3"], vec!["-h", "1"]];
 
     for i in 0..10 {
         let mut chunks = base_chunks.clone();

@@ -7,9 +7,9 @@ use std::io::{BufRead, Write};
 use std::path::Path;
 
 use crate::error::SvmError;
-use crate::util::MAX_FEATURE_INDEX;
-use crate::util::parse_feature_index;
 use crate::types::*;
+use crate::util::parse_feature_index;
+use crate::util::MAX_FEATURE_INDEX;
 
 // ─── C-compatible %g formatting ─────────────────────────────────────
 //
@@ -432,8 +432,7 @@ pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError
                 prob_b = parse_multiple(&mut parts, line_num, "probB")?;
             }
             "prob_density_marks" => {
-                prob_density_marks =
-                    parse_multiple(&mut parts, line_num, "prob_density_marks")?;
+                prob_density_marks = parse_multiple(&mut parts, line_num, "prob_density_marks")?;
             }
             "nr_sv" => {
                 n_sv = parts

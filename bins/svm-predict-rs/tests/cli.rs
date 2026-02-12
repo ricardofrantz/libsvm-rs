@@ -114,11 +114,7 @@ fn mixed_flag_order_preserves_quiet_prediction() {
 #[test]
 fn quiet_flag_variants_with_probability_off() {
     let dir = unique_tmp_dir("svm-predict-permutations");
-    let args = vec![
-        vec!["-b", "0", "-q"],
-        vec!["-q", "-b", "0"],
-        vec!["-q"],
-    ];
+    let args = vec![vec!["-b", "0", "-q"], vec!["-q", "-b", "0"], vec!["-q"]];
 
     for flag_order in args {
         let output_path = dir.join(format!("predictions-{}.txt", flag_order.join("-")));
@@ -185,10 +181,7 @@ fn probability_flag_without_value_prints_help() {
 fn random_flag_chunk_permutations_preserve_quiet_behavior() {
     let dir = unique_tmp_dir("svm-predict-fuzz");
     let mut state = 0x5A5A_5A5A_DEAD_BEEFu64;
-    let base_chunks: Vec<Vec<&str>> = vec![
-        vec!["-b", "0"],
-        vec!["-q"],
-    ];
+    let base_chunks: Vec<Vec<&str>> = vec![vec!["-b", "0"], vec!["-q"]];
 
     for i in 0..12 {
         let mut chunks = base_chunks.clone();

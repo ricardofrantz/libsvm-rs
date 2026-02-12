@@ -38,12 +38,12 @@ pub mod cache;
 pub mod error;
 pub mod io;
 pub mod kernel;
-pub mod qmatrix;
 pub mod metrics;
+pub mod qmatrix;
 pub mod solver;
-pub mod util;
 pub mod train;
 pub mod types;
+pub mod util;
 
 pub mod cross_validation;
 pub mod predict;

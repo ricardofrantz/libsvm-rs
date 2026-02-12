@@ -6,8 +6,8 @@
 
 use crate::predict::{predict, predict_probability};
 use crate::train::svm_train;
-use crate::util::{group_classes, shuffle_range};
 use crate::types::{SvmModel, SvmNode, SvmParameter, SvmProblem, SvmType};
+use crate::util::{group_classes, shuffle_range};
 
 fn predict_cv_target(model: &SvmModel, param: &SvmParameter, x: &[SvmNode]) -> f64 {
     if param.probability && matches!(param.svm_type, SvmType::CSvc | SvmType::NuSvc) {

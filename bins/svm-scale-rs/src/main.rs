@@ -41,7 +41,10 @@ fn parse_feature_index_or_exit(idx_str: &str) -> i32 {
         process::exit(1);
     }
     if index > MAX_FEATURE_INDEX {
-        eprintln!("feature index {} exceeds limit ({})", index, MAX_FEATURE_INDEX);
+        eprintln!(
+            "feature index {} exceeds limit ({})",
+            index, MAX_FEATURE_INDEX
+        );
         process::exit(1);
     }
     index
@@ -71,7 +74,6 @@ fn warn_unseen_feature_range(
         }
     }
 }
-
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();

@@ -198,10 +198,7 @@ fn scaling_accepts_permuted_scale_flags() {
                 command.arg(token);
             }
         }
-        let output = command
-            .arg(&data_path)
-            .output()
-            .unwrap();
+        let output = command.arg(&data_path).output().unwrap();
 
         assert!(
             output.status.success(),
@@ -219,11 +216,7 @@ fn random_scale_flag_permutations_still_generate_output() {
     let data_path = dir.join("tiny.scale");
     fs::write(&data_path, "1 1:2.0 2:4.0\n-1 2:1.0\n").unwrap();
 
-    let base_chunks: Vec<Vec<&str>> = vec![
-        vec!["-u", "1"],
-        vec!["-l", "-1"],
-        vec!["-s", ""],
-    ];
+    let base_chunks: Vec<Vec<&str>> = vec![vec!["-u", "1"], vec!["-l", "-1"], vec!["-s", ""]];
 
     let mut state = 0xC0FF_EE00_5A5A_1234u64;
     for i in 0..10 {
