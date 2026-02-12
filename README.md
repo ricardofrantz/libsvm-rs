@@ -24,7 +24,7 @@
 
 ```toml
 [dependencies]
-libsvm-rs = "0.6"
+libsvm-rs = "0.7"
 ```
 
 ### CLI tools
@@ -296,6 +296,8 @@ crates/libsvm/src/
   predict.rs          — predict, predict_values, predict_probability
   probability.rs      — Platt scaling, multiclass probability, CV-based estimation
   cross_validation.rs — svm_cross_validation (stratified + simple)
+  metrics.rs          — accuracy_percentage, regression_metrics (MSE + R²)
+  util.rs             — Shared helpers (group_classes, parse_feature_index, PRNG)
 
 bins/
   svm-train-rs/       — CLI matching C svm-train (all flags including -wi class weights)
@@ -651,9 +653,11 @@ Float formatting uses `%.17g`-equivalent precision for model files (ensuring rou
 | Probability | 6 | Sigmoid fitting, binary/multiclass/regression probability |
 | Cross-validation | 5 | Stratified CV, classification accuracy, regression MSE |
 | Property | 7 | Proptest-based invariant checks (random params/data) |
-| CLI integration | 6 | Train/predict/scale end-to-end via subprocess |
+| Metrics | 6 | Regression MSE/R², classification accuracy, edge cases |
+| Util | 10 | group_classes, parse_feature_index, shuffle_range |
+| CLI integration | 21 | Train/predict/scale end-to-end, flag permutation fuzzing |
 | Differential | 250 | Full Rust-vs-C comparison matrix (via external suite) |
-| **Unit/integration** | **~98** | |
+| **Unit/integration** | **~124** | |
 
 Coverage metrics: 93.19% line coverage, 92.86% function coverage (library crate).
 
