@@ -6,16 +6,8 @@
 
 use crate::predict::{predict, predict_probability};
 use crate::train::svm_train;
+use crate::util::{group_classes, shuffle_range};
 use crate::types::{SvmModel, SvmNode, SvmParameter, SvmProblem, SvmType};
-
-// ─── RNG helper ──────────────────────────────────────────────────────
-
-fn rng_next(state: &mut u64) -> usize {
-    *state = state
-        .wrapping_mul(6364136223846793005)
-        .wrapping_add(1442695040888963407);
-    (*state >> 33) as usize
-}
 
 fn predict_cv_target(model: &SvmModel, param: &SvmParameter, x: &[SvmNode]) -> f64 {
     if param.probability && matches!(param.svm_type, SvmType::CSvc | SvmType::NuSvc) {
@@ -25,6 +17,18 @@ fn predict_cv_target(model: &SvmModel, param: &SvmParameter, x: &[SvmNode]) -> f
     } else {
         predict(model, x)
     }
+}
+
+fn fold_starts(fold_count: &[usize]) -> Vec<usize> {
+    let mut fold_start = vec![0usize; fold_count.len() + 1];
+    for i in 0..fold_count.len() {
+        fold_start[i + 1] = fold_start[i] + fold_count[i];
+    }
+    fold_start
+}
+
+fn is_stratified_cv(param: &SvmParameter, nr_fold: usize, l: usize) -> bool {
+    matches!(param.svm_type, SvmType::CSvc | SvmType::NuSvc) && nr_fold < l
 }
 
 // ─── Public API ──────────────────────────────────────────────────────
@@ -69,39 +73,33 @@ pub fn svm_cross_validation(
 
     let mut rng: u64 = 1;
     let mut perm: Vec<usize> = (0..l).collect();
-    let mut fold_start = vec![0usize; nr_fold + 1];
 
     // ── Fold assignment ──────────────────────────────────────────
-    if matches!(param.svm_type, SvmType::CSvc | SvmType::NuSvc) && nr_fold < l {
+    let (_fold_count, fold_start) = if is_stratified_cv(param, nr_fold, l) {
         // Stratified: group by class, shuffle within class, distribute
-        let (label_list, start, count, group_perm) = group_classes(&prob.labels);
-        let nr_class = label_list.len();
-
-        let mut index = group_perm;
+        let grouped = group_classes(&prob.labels);
+        let nr_class = grouped.label.len();
+        let start = &grouped.start;
+        let count = &grouped.count;
+        let mut index = grouped.perm;
 
         // Shuffle within each class
         for c in 0..nr_class {
             let s = start[c];
             let n = count[c];
-            for i in 0..n {
-                let j = i + rng_next(&mut rng) % (n - i);
-                index.swap(s + i, s + j);
-            }
+            shuffle_range(&mut index, s, n, &mut rng);
         }
 
         // Compute fold sizes
-        let mut fold_count = vec![0usize; nr_fold];
-        for (i, fc) in fold_count.iter_mut().enumerate() {
-            for &cnt in &count {
-                *fc += ((i + 1) * cnt) / nr_fold - (i * cnt) / nr_fold;
-            }
-        }
-
-        fold_start[0] = 0;
-        for i in 0..nr_fold {
-            fold_start[i + 1] = fold_start[i] + fold_count[i];
-        }
-
+        let fold_count: Vec<usize> = (0..nr_fold)
+            .map(|i| {
+                count
+                    .iter()
+                    .map(|&cnt| ((i + 1) * cnt) / nr_fold - (i * cnt) / nr_fold)
+                    .sum()
+            })
+            .collect();
+        let fold_start = fold_starts(&fold_count);
         // Distribute samples to folds, preserving class balance
         // (C++ increments fold_start[i] as a running pointer; we
         // use a separate offset array to keep fold_start immutable.)
@@ -116,22 +114,16 @@ pub fn svm_cross_validation(
                 }
             }
         }
-
-        // Rebuild fold_start from fold_count
-        fold_start[0] = 0;
-        for i in 0..nr_fold {
-            fold_start[i + 1] = fold_start[i] + fold_count[i];
-        }
+        (fold_count, fold_start)
     } else {
         // Simple random shuffle
-        for i in 0..l {
-            let j = i + rng_next(&mut rng) % (l - i);
-            perm.swap(i, j);
-        }
-        for (i, fs) in fold_start.iter_mut().enumerate() {
-            *fs = i * l / nr_fold;
-        }
-    }
+        shuffle_range(&mut perm, 0, l, &mut rng);
+        let fold_count: Vec<usize> = (0..nr_fold)
+            .map(|i| (i + 1) * l / nr_fold - i * l / nr_fold)
+            .collect();
+        let fold_start = fold_starts(&fold_count);
+        (fold_count, fold_start)
+    };
 
     // ── Evaluate each fold ───────────────────────────────────────
     let mut target = vec![0.0; l];
@@ -167,55 +159,6 @@ pub fn svm_cross_validation(
     }
 
     target
-}
-
-// ─── Internal helpers ────────────────────────────────────────────────
-
-/// Group samples by class label (same logic as `train::svm_group_classes`).
-#[allow(clippy::needless_range_loop)]
-fn group_classes(labels: &[f64]) -> (Vec<i32>, Vec<usize>, Vec<usize>, Vec<usize>) {
-    let l = labels.len();
-    let mut label_list: Vec<i32> = Vec::new();
-    let mut count: Vec<usize> = Vec::new();
-    let mut data_label = vec![0usize; l];
-
-    for i in 0..l {
-        let this_label = labels[i] as i32;
-        if let Some(pos) = label_list.iter().position(|&lab| lab == this_label) {
-            count[pos] += 1;
-            data_label[i] = pos;
-        } else {
-            data_label[i] = label_list.len();
-            label_list.push(this_label);
-            count.push(1);
-        }
-    }
-
-    let nr_class = label_list.len();
-
-    // For binary with -1/+1 where -1 appears first, swap to put +1 first
-    if nr_class == 2 && label_list[0] == -1 && label_list[1] == 1 {
-        label_list.swap(0, 1);
-        count.swap(0, 1);
-        for dl in data_label.iter_mut() {
-            *dl = if *dl == 0 { 1 } else { 0 };
-        }
-    }
-
-    let mut start = vec![0usize; nr_class];
-    for i in 1..nr_class {
-        start[i] = start[i - 1] + count[i - 1];
-    }
-
-    let mut perm = vec![0usize; l];
-    let mut start_copy = start.clone();
-    for i in 0..l {
-        let cls = data_label[i];
-        perm[start_copy[cls]] = i;
-        start_copy[cls] += 1;
-    }
-
-    (label_list, start, count, perm)
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────

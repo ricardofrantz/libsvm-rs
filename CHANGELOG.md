@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-02-12
+
+### Added
+
+- `metrics` module: `accuracy_percentage()`, `regression_metrics()` (public API)
+- `util` module: `parse_feature_index()`, `MAX_FEATURE_INDEX` (public API)
+- CLI integration tests — flag permutation and edge-case coverage
+- Shared `cli_flag_helpers.rs` for property-based CLI testing
+
+### Changed
+
+- Deduplicated `group_classes` from train.rs + cross_validation.rs into util module
+- Collapsed `parse_multiple_f64`/`parse_multiple_i32` into generic `parse_multiple<T>` in io.rs
+- CLI arg parsing simplified via `parse_flag_arg()` helper in all 3 binaries
+- svm-predict collects predictions into Vec before computing metrics (cleaner flow)
+
+### Fixed
+
+- `.tmp/` added to `.gitignore`
+
 ## [0.6.0] - 2026-02-11
 
 ### Added
@@ -126,7 +146,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Parameter validation with ν-SVC feasibility check
 - 38 tests
 
-[Unreleased]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.4.0...v0.5.0

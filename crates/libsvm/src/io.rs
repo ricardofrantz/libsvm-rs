@@ -7,6 +7,8 @@ use std::io::{BufRead, Write};
 use std::path::Path;
 
 use crate::error::SvmError;
+use crate::util::MAX_FEATURE_INDEX;
+use crate::util::parse_feature_index;
 use crate::types::*;
 
 // ─── C-compatible %g formatting ─────────────────────────────────────
@@ -142,8 +144,6 @@ fn str_to_kernel_type(s: &str) -> Option<KernelType> {
 
 // ─── Problem file I/O ────────────────────────────────────────────────
 
-const MAX_FEATURE_INDEX: i32 = 10_000_000;
-
 /// Load an SVM problem from a file in LIBSVM sparse format.
 ///
 /// Format: `<label> <index1>:<value1> <index2>:<value2> ...`
@@ -186,20 +186,7 @@ pub fn load_problem_from_reader(reader: impl BufRead) -> Result<SvmProblem, SvmE
                 line: line_num,
                 message: format!("expected index:value, got: {}", token),
             })?;
-            let index: i32 = idx_str.parse().map_err(|_| SvmError::ParseError {
-                line: line_num,
-                message: format!("invalid index: {}", idx_str),
-            })?;
-
-            if index > MAX_FEATURE_INDEX {
-                return Err(SvmError::ParseError {
-                    line: line_num,
-                    message: format!(
-                        "feature index {} exceeds limit ({})",
-                        index, MAX_FEATURE_INDEX
-                    ),
-                });
-            }
+            let index: i32 = parse_feature_index_problem_line(line_num, idx_str)?;
 
             if !nodes.is_empty() && index <= prev_index {
                 return Err(SvmError::ParseError {
@@ -433,20 +420,20 @@ pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError
                 }
             }
             "rho" => {
-                rho = parse_multiple_f64(&mut parts, line_num, "rho")?;
+                rho = parse_multiple(&mut parts, line_num, "rho")?;
             }
             "label" => {
-                label = parse_multiple_i32(&mut parts, line_num, "label")?;
+                label = parse_multiple(&mut parts, line_num, "label")?;
             }
             "probA" => {
-                prob_a = parse_multiple_f64(&mut parts, line_num, "probA")?;
+                prob_a = parse_multiple(&mut parts, line_num, "probA")?;
             }
             "probB" => {
-                prob_b = parse_multiple_f64(&mut parts, line_num, "probB")?;
+                prob_b = parse_multiple(&mut parts, line_num, "probB")?;
             }
             "prob_density_marks" => {
                 prob_density_marks =
-                    parse_multiple_f64(&mut parts, line_num, "prob_density_marks")?;
+                    parse_multiple(&mut parts, line_num, "prob_density_marks")?;
             }
             "nr_sv" => {
                 n_sv = parts
@@ -510,16 +497,7 @@ pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError
                     line_num, token
                 ))
             })?;
-            let index: i32 = idx_str.parse().map_err(|_| {
-                SvmError::ModelFormatError(format!("line {}: invalid index: {}", line_num, idx_str))
-            })?;
-
-            if index > MAX_FEATURE_INDEX {
-                return Err(SvmError::ModelFormatError(format!(
-                    "line {}: feature index {} exceeds limit ({})",
-                    line_num, index, MAX_FEATURE_INDEX
-                )));
-            }
+            let index: i32 = parse_feature_index_model_line(line_num, idx_str)?;
 
             let value: f64 = val_str.parse().map_err(|_| {
                 SvmError::ModelFormatError(format!("line {}: invalid value: {}", line_num, val_str))
@@ -546,6 +524,18 @@ pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError
 
 // ─── Helper parsers ──────────────────────────────────────────────────
 
+fn parse_feature_index_problem_line(line_num: usize, idx_str: &str) -> Result<i32, SvmError> {
+    parse_feature_index(idx_str, MAX_FEATURE_INDEX).map_err(|msg| SvmError::ParseError {
+        line: line_num,
+        message: msg,
+    })
+}
+
+fn parse_feature_index_model_line(line_num: usize, idx_str: &str) -> Result<i32, SvmError> {
+    parse_feature_index(idx_str, MAX_FEATURE_INDEX)
+        .map_err(|msg| SvmError::ModelFormatError(format!("line {}: {}", line_num, msg)))
+}
+
 fn parse_single<T: std::str::FromStr>(
     parts: &mut std::str::SplitWhitespace<'_>,
     line_num: usize,
@@ -562,31 +552,14 @@ fn parse_single<T: std::str::FromStr>(
     })
 }
 
-fn parse_multiple_f64(
+fn parse_multiple<T: std::str::FromStr>(
     parts: &mut std::str::SplitWhitespace<'_>,
     line_num: usize,
     field: &str,
-) -> Result<Vec<f64>, SvmError> {
+) -> Result<Vec<T>, SvmError> {
     parts
         .map(|s| {
-            s.parse::<f64>().map_err(|_| {
-                SvmError::ModelFormatError(format!(
-                    "line {}: invalid {} value: {}",
-                    line_num, field, s
-                ))
-            })
-        })
-        .collect()
-}
-
-fn parse_multiple_i32(
-    parts: &mut std::str::SplitWhitespace<'_>,
-    line_num: usize,
-    field: &str,
-) -> Result<Vec<i32>, SvmError> {
-    parts
-        .map(|s| {
-            s.parse::<i32>().map_err(|_| {
+            s.parse::<T>().map_err(|_| {
                 SvmError::ModelFormatError(format!(
                     "line {}: invalid {} value: {}",
                     line_num, field, s

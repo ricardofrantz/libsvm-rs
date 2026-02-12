@@ -1,6 +1,6 @@
 use libsvm_rs::io::{format_17g, format_g, load_model, load_problem};
 use libsvm_rs::predict::{predict, predict_probability};
-use libsvm_rs::{svm_check_probability_model, SvmType};
+use libsvm_rs::{regression_metrics, svm_check_probability_model, SvmType};
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
@@ -16,6 +16,15 @@ options:
 "
     );
     process::exit(1);
+}
+
+fn parse_flag_arg<'a>(args: &'a [String], i: &mut usize) -> &'a str {
+    if *i >= args.len() {
+        exit_with_help();
+    }
+    let value = &args[*i];
+    *i += 1;
+    value.as_str()
 }
 
 fn main() {
@@ -38,20 +47,17 @@ fn main() {
         }
 
         i += 1;
-        if i >= args.len() {
-            exit_with_help();
-        }
+        let value = parse_flag_arg(&args, &mut i);
 
         match flag.as_bytes()[1] {
             b'b' => {
-                predict_prob = args[i].parse::<i32>().unwrap_or(0) != 0;
+                predict_prob = value.parse::<i32>().unwrap_or(0) != 0;
             }
             _ => {
                 eprintln!("Unknown option: {}", flag);
                 exit_with_help();
             }
         }
-        i += 1;
     }
 
     // Need exactly 3 remaining args: test_file model_file output_file
@@ -122,18 +128,13 @@ fn main() {
     }
 
     // Predict
-    let mut correct = 0usize;
-    let mut total = 0usize;
-    let mut error = 0.0;
-    let (mut sump, mut sumt, mut sumpp, mut sumtt, mut sumpt) = (0.0, 0.0, 0.0, 0.0, 0.0);
+    let mut predictions = Vec::with_capacity(problem.labels.len());
 
-    let use_prob_output =
+    let use_probability_output =
         predict_prob && matches!(svm_type, SvmType::CSvc | SvmType::NuSvc | SvmType::OneClass);
 
-    for (idx, instance) in problem.instances.iter().enumerate() {
-        let target_label = problem.labels[idx];
-
-        let predict_label = if use_prob_output {
+    for instance in &problem.instances {
+        let predict_label = if use_probability_output {
             let (label, probs) =
                 predict_probability(&model, instance).expect("probability prediction failed");
             write!(out, "{}", format_g(label)).unwrap();
@@ -148,32 +149,27 @@ fn main() {
             label
         };
 
-        if predict_label == target_label {
-            correct += 1;
-        }
-        error += (predict_label - target_label) * (predict_label - target_label);
-        sump += predict_label;
-        sumt += target_label;
-        sumpp += predict_label * predict_label;
-        sumtt += target_label * target_label;
-        sumpt += predict_label * target_label;
-        total += 1;
+        predictions.push(predict_label);
     }
 
     if !quiet {
         if matches!(svm_type, SvmType::EpsilonSvr | SvmType::NuSvr) {
-            let n = total as f64;
-            eprintln!("Mean squared error = {} (regression)", format_g(error / n));
-            let r2 = ((n * sumpt - sump * sumt) * (n * sumpt - sump * sumt))
-                / ((n * sumpp - sump * sump) * (n * sumtt - sumt * sumt));
+            let (mse, r2) = regression_metrics(&predictions, &problem.labels);
+            eprintln!("Mean squared error = {} (regression)", format_g(mse));
             eprintln!(
                 "Squared correlation coefficient = {} (regression)",
                 format_g(r2)
             );
         } else {
+            let total = problem.labels.len();
+            let correct = predictions
+                .iter()
+                .zip(problem.labels.iter())
+                .filter(|(&p, &l)| p == l)
+                .count();
             eprintln!(
                 "Accuracy = {}% ({}/{}) (classification)",
-                format_g(correct as f64 / total as f64 * 100.0),
+                format_g(100.0 * correct as f64 / total as f64),
                 correct,
                 total
             );

@@ -3,6 +3,11 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+#[path = "../../../tests/cli_flag_helpers.rs"]
+mod cli_flag_helpers;
+
+use cli_flag_helpers::shuffle_flag_chunks;
+
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 fn workspace_root() -> PathBuf {
@@ -93,4 +98,91 @@ fn cross_validation_prints_accuracy() {
     );
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("Cross Validation Accuracy"));
+}
+
+#[test]
+fn cross_validation_accepts_flag_order_variants() {
+    let output = Command::new(bin_path())
+        .arg("-v")
+        .arg("3")
+        .arg("-q")
+        .arg(data_file("heart_scale"))
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8(output.stderr).unwrap()
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("Cross Validation Accuracy"));
+}
+
+#[test]
+fn cross_validation_accepts_permuted_flag_chunk_order() {
+    let mut orders = Vec::new();
+    orders.push(vec!["-q", "-v", "3"]);
+    orders.push(vec!["-v", "3", "-q"]);
+    orders.push(vec!["-v", "3", "-q", "-h", "1"]);
+    orders.push(vec!["-h", "1", "-v", "3", "-q"]);
+
+    for flag_order in orders.iter() {
+        let output = Command::new(bin_path())
+            .args(flag_order.iter().copied())
+            .arg(data_file("heart_scale"))
+            .output()
+            .unwrap();
+
+        assert!(
+            output.status.success(),
+            "flags {:?} failed, stderr: {}",
+            flag_order,
+            String::from_utf8(output.stderr).unwrap()
+        );
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains("Cross Validation Accuracy"));
+    }
+}
+
+#[test]
+fn cross_validation_missing_fold_count_uses_help() {
+    let output = Command::new(bin_path())
+        .arg("-v")
+        .arg(data_file("heart_scale"))
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("Usage: svm-train"));
+}
+
+#[test]
+fn random_cross_validation_flag_permutations() {
+    let mut state = 0xA5A5_5A5A_FEED_F00Du64;
+    let base_chunks: Vec<Vec<&str>> = vec![
+        vec!["-q"],
+        vec!["-v", "3"],
+        vec!["-h", "1"],
+    ];
+
+    for i in 0..10 {
+        let mut chunks = base_chunks.clone();
+        shuffle_flag_chunks(&mut chunks[..], &mut state);
+
+        let mut command = Command::new(bin_path());
+        for chunk in chunks.iter() {
+            command.args(chunk.iter().copied());
+        }
+        let output = command.arg(data_file("heart_scale")).output().unwrap();
+
+        assert!(
+            output.status.success(),
+            "iteration {i}, seed {state}, stderr: {}",
+            String::from_utf8(output.stderr).unwrap()
+        );
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains("Cross Validation Accuracy"));
+    }
 }

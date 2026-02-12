@@ -1,4 +1,5 @@
 use libsvm_rs::io::{format_17g, format_g};
+use libsvm_rs::util::MAX_FEATURE_INDEX;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::process;
@@ -18,26 +19,59 @@ options:
     process::exit(1);
 }
 
-const MAX_FEATURE_INDEX: i32 = 10_000_000;
-
-fn validate_feature_index_or_exit(idx: i32) {
-    if !(1..=MAX_FEATURE_INDEX).contains(&idx) {
-        eprintln!(
-            "feature index {} out of valid range [1, {}]",
-            idx, MAX_FEATURE_INDEX
-        );
-        process::exit(1);
+fn parse_flag_arg<'a>(args: &'a [String], i: &mut usize) -> &'a str {
+    if *i >= args.len() {
+        exit_with_help();
     }
+    let value = &args[*i];
+    *i += 1;
+    value.as_str()
 }
 
 fn parse_feature_index_or_exit(idx_str: &str) -> i32 {
-    let idx = idx_str.parse::<i32>().unwrap_or_else(|_| {
+    let index = idx_str.parse::<i32>().unwrap_or_else(|_| {
         eprintln!("invalid feature index: {}", idx_str);
         process::exit(1);
     });
-    validate_feature_index_or_exit(idx);
-    idx
+    if index <= 0 {
+        eprintln!(
+            "feature index {} out of valid range [1, {}]",
+            index, MAX_FEATURE_INDEX
+        );
+        process::exit(1);
+    }
+    if index > MAX_FEATURE_INDEX {
+        eprintln!("feature index {} exceeds limit ({})", index, MAX_FEATURE_INDEX);
+        process::exit(1);
+    }
+    index
 }
+
+fn warn_missing_scale_feature(index: i32, data_filename: &str, rfile: &str) {
+    eprintln!(
+        "WARNING: feature index {} appeared in file {} was not seen in the scaling factor file {}. The feature is scaled to 0.",
+        index, data_filename, rfile
+    );
+}
+
+fn warn_unseen_feature_range(
+    first: i32,
+    last: i32,
+    data_filename: &str,
+    rfile: &str,
+    feature_min: &mut [f64],
+    feature_max: &mut [f64],
+) {
+    for j in first..=last {
+        let ju = j as usize;
+        if ju < feature_min.len() && feature_min[ju] != feature_max[ju] {
+            warn_missing_scale_feature(j, data_filename, rfile);
+            feature_min[j as usize] = 0.0;
+            feature_max[j as usize] = 0.0;
+        }
+    }
+}
+
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -57,38 +91,33 @@ fn main() {
         }
         let flag = &args[i];
         i += 1;
-        if i >= args.len() {
-            exit_with_help();
-        }
+        let value = parse_flag_arg(&args, &mut i);
 
         match flag.as_bytes()[1] {
             b'l' => {
-                lower = args[i].parse().unwrap_or_else(|_| exit_with_help());
+                lower = value.parse().unwrap_or_else(|_| exit_with_help());
             }
             b'u' => {
-                upper = args[i].parse().unwrap_or_else(|_| exit_with_help());
+                upper = value.parse().unwrap_or_else(|_| exit_with_help());
             }
             b'y' => {
-                y_lower = args[i].parse().unwrap_or_else(|_| exit_with_help());
-                i += 1;
-                if i >= args.len() {
-                    exit_with_help();
-                }
-                y_upper = args[i].parse().unwrap_or_else(|_| exit_with_help());
+                y_lower = value.parse().unwrap_or_else(|_| exit_with_help());
+                y_upper = parse_flag_arg(&args, &mut i)
+                    .parse()
+                    .unwrap_or_else(|_| exit_with_help());
                 y_scaling = true;
             }
             b's' => {
-                save_filename = Some(args[i].clone());
+                save_filename = Some(value.to_string());
             }
             b'r' => {
-                restore_filename = Some(args[i].clone());
+                restore_filename = Some(value.to_string());
             }
             _ => {
                 eprintln!("unknown option");
                 exit_with_help();
             }
         }
-        i += 1;
     }
 
     if upper <= lower || (y_scaling && y_upper <= y_lower) {
@@ -270,17 +299,14 @@ fn main() {
                 let fmax: f64 = parts[2].parse().unwrap_or(0.0);
 
                 // Warn about features not seen in restore file
-                for j in next_restore_index..idx {
-                    let ju = j as usize;
-                    if ju < n && feature_min[ju] != feature_max[ju] {
-                        eprintln!(
-                            "WARNING: feature index {} appeared in file {} was not seen in the scaling factor file {}. The feature is scaled to 0.",
-                            j, data_filename, rfile
-                        );
-                        feature_min[ju] = 0.0;
-                        feature_max[ju] = 0.0;
-                    }
-                }
+                warn_unseen_feature_range(
+                    next_restore_index,
+                    idx - 1,
+                    data_filename,
+                    rfile,
+                    &mut feature_min,
+                    &mut feature_max,
+                );
 
                 let iu = idx as usize;
                 if iu < n {
@@ -290,17 +316,14 @@ fn main() {
                 next_restore_index = idx + 1;
             }
             // Remaining features
-            for j in next_restore_index..=max_index {
-                let ju = j as usize;
-                if ju < n && feature_min[ju] != feature_max[ju] {
-                    eprintln!(
-                        "WARNING: feature index {} appeared in file {} was not seen in the scaling factor file {}. The feature is scaled to 0.",
-                        j, data_filename, restore_filename.as_ref().unwrap()
-                    );
-                    feature_min[ju] = 0.0;
-                    feature_max[ju] = 0.0;
-                }
-            }
+            warn_unseen_feature_range(
+                next_restore_index,
+                max_index,
+                data_filename,
+                rfile,
+                &mut feature_min,
+                &mut feature_max,
+            );
         }
     }
 

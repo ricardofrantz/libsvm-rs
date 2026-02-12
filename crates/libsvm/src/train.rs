@@ -6,11 +6,19 @@
 use crate::qmatrix::{OneClassQ, SvcQ, SvrQ};
 use crate::solver::{SolutionInfo, Solver, SolverVariant};
 use crate::types::*;
+use crate::util::group_classes;
 
 /// Internal decision function result from one binary sub-problem.
 struct DecisionFunction {
     alpha: Vec<f64>,
     rho: f64,
+}
+
+fn sign_labels(labels: &[f64]) -> Vec<i8> {
+    labels
+        .iter()
+        .map(|&v| if v > 0.0 { 1 } else { -1 })
+        .collect()
 }
 
 // ─── Solve dispatchers ──────────────────────────────────────────────
@@ -25,10 +33,7 @@ fn solve_c_svc(
     let l = x.len();
     let mut alpha = vec![0.0; l];
     let p: Vec<f64> = vec![-1.0; l];
-    let y: Vec<i8> = labels
-        .iter()
-        .map(|&v| if v > 0.0 { 1 } else { -1 })
-        .collect();
+    let y = sign_labels(labels);
 
     let q = Box::new(SvcQ::new(x, param, &y));
     let si = Solver::solve(
@@ -59,10 +64,7 @@ fn solve_nu_svc(
 ) -> (Vec<f64>, SolutionInfo) {
     let l = x.len();
     let nu = param.nu;
-    let y: Vec<i8> = labels
-        .iter()
-        .map(|&v| if v > 0.0 { 1 } else { -1 })
-        .collect();
+    let y = sign_labels(labels);
 
     // Initialize alpha: spread nu*l/2 among positive and negative samples
     let mut alpha = vec![0.0; l];
@@ -263,72 +265,20 @@ fn svm_train_one(
     DecisionFunction { alpha, rho: si.rho }
 }
 
-// ─── Class grouping ─────────────────────────────────────────────────
-
-struct GroupInfo {
-    nr_class: usize,
-    label: Vec<i32>,
-    start: Vec<usize>,
-    count: Vec<usize>,
-    perm: Vec<usize>,
+fn mark_nonzero_indices(nonzero: &mut [bool], start: usize, alphas: &[f64]) {
+    for (offset, &alpha) in alphas.iter().enumerate() {
+        let idx = start + offset;
+        if !nonzero[idx] && alpha.abs() > 0.0 {
+            nonzero[idx] = true;
+        }
+    }
 }
 
-/// Group samples by class label. Matches LIBSVM's `svm_group_classes`.
-#[allow(clippy::needless_range_loop)]
-fn svm_group_classes(labels: &[f64]) -> GroupInfo {
-    let l = labels.len();
-    let mut label_list: Vec<i32> = Vec::new();
-    let mut count: Vec<usize> = Vec::new();
-    let mut data_label = vec![0usize; l];
-
-    for i in 0..l {
-        let this_label = labels[i] as i32;
-        let pos = label_list.iter().position(|&lab| lab == this_label);
-        match pos {
-            Some(j) => {
-                count[j] += 1;
-                data_label[i] = j;
-            }
-            None => {
-                data_label[i] = label_list.len();
-                label_list.push(this_label);
-                count.push(1);
-            }
-        }
-    }
-
-    let nr_class = label_list.len();
-
-    // For binary with -1/+1 labels where -1 appears first, swap to put +1 first
-    if nr_class == 2 && label_list[0] == -1 && label_list[1] == 1 {
-        label_list.swap(0, 1);
-        count.swap(0, 1);
-        for dl in data_label.iter_mut() {
-            *dl = if *dl == 0 { 1 } else { 0 };
-        }
-    }
-
-    // Build start array and permutation
-    let mut start = vec![0usize; nr_class];
-    for i in 1..nr_class {
-        start[i] = start[i - 1] + count[i - 1];
-    }
-
-    let mut perm = vec![0usize; l];
-    let mut start_copy = start.clone();
-    for i in 0..l {
-        let cls = data_label[i];
-        perm[start_copy[cls]] = i;
-        start_copy[cls] += 1;
-    }
-
-    GroupInfo {
-        nr_class,
-        label: label_list,
-        start,
-        count,
-        perm,
-    }
+fn count_nonzero(nonzero: &[bool], start: usize, len: usize) -> usize {
+    nonzero[start..start + len]
+        .iter()
+        .filter(|&&is_nonzero| is_nonzero)
+        .count()
 }
 
 // ─── svm_train ──────────────────────────────────────────────────────
@@ -412,8 +362,8 @@ fn train_regression_or_one_class(problem: &SvmProblem, param: &SvmParameter) -> 
 
 fn train_classification(problem: &SvmProblem, param: &SvmParameter) -> SvmModel {
     let l = problem.instances.len();
-    let group = svm_group_classes(&problem.labels);
-    let nr_class = group.nr_class;
+    let group = group_classes(&problem.labels);
+    let nr_class = group.label.len();
 
     if nr_class == 1 {
         crate::info("WARNING: training data in only one class. See README for details.\n");
@@ -486,16 +436,8 @@ fn train_classification(problem: &SvmProblem, param: &SvmParameter) -> SvmModel 
             let f = svm_train_one(&sub_x, &sub_labels, param, weighted_c[i], weighted_c[j]);
 
             // Mark nonzero alphas
-            for k in 0..ci {
-                if !nonzero[si + k] && f.alpha[k].abs() > 0.0 {
-                    nonzero[si + k] = true;
-                }
-            }
-            for k in 0..cj {
-                if !nonzero[sj + k] && f.alpha[ci + k].abs() > 0.0 {
-                    nonzero[sj + k] = true;
-                }
-            }
+            mark_nonzero_indices(&mut nonzero, si, &f.alpha[..ci]);
+            mark_nonzero_indices(&mut nonzero, sj, &f.alpha[ci..(ci + cj)]);
 
             decisions.push(f);
         }
@@ -508,15 +450,10 @@ fn train_classification(problem: &SvmProblem, param: &SvmParameter) -> SvmModel 
     // Count SVs per class
     let mut total_sv = 0;
     let mut n_sv_per_class = vec![0usize; nr_class];
-    for i in 0..nr_class {
-        let mut n = 0;
-        for j in 0..group.count[i] {
-            if nonzero[group.start[i] + j] {
-                n += 1;
-                total_sv += 1;
-            }
-        }
-        n_sv_per_class[i] = n;
+    for (i, n_sv) in n_sv_per_class.iter_mut().enumerate().take(nr_class) {
+        let n = count_nonzero(&nonzero, group.start[i], group.count[i]);
+        total_sv += n;
+        *n_sv = n;
     }
 
     crate::info(&format!("Total nSV = {}\n", total_sv));

@@ -39,7 +39,9 @@ pub mod error;
 pub mod io;
 pub mod kernel;
 pub mod qmatrix;
+pub mod metrics;
 pub mod solver;
+pub mod util;
 pub mod train;
 pub mod types;
 
@@ -48,4 +50,5 @@ pub mod predict;
 pub mod probability;
 
 pub use error::SvmError;
+pub use metrics::{accuracy_percentage, regression_metrics};
 pub use types::*;

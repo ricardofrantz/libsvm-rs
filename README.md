@@ -1,6 +1,6 @@
 # libsvm-rs
 
-A pure Rust port of [LIBSVM](https://github.com/cjlin1/libsvm) (v337, December 2025) with matching model format, matching CLI behavior, and a reproducible Rust-vs-C differential verification pipeline. The library targets numerical equivalence within ~1e-8 tolerance — not bitwise identity — against the upstream C++ implementation.
+`libsvm-rs` is a pure Rust implementation of [LIBSVM](https://github.com/cjlin1/libsvm) (v337, December 2025) focused on scientific reproducibility and upstream parity. It preserves LIBSVM model format and CLI behavior, ships reproducible Rust-vs-C/C++ comparison pipelines (including figures and benchmark summaries), and targets numerical equivalence (typically around `1e-8` tolerance) rather than bitwise identity against the upstream reference implementation.
 
 [![Crates.io](https://img.shields.io/crates/v/libsvm-rs.svg)](https://crates.io/crates/libsvm-rs)
 [![Documentation](https://docs.rs/libsvm-rs/badge.svg)](https://docs.rs/libsvm-rs)

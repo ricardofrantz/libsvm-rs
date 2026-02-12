@@ -1,5 +1,8 @@
 # Rust
 /target/
+
+# Temporary files
+.tmp/
 Cargo.lock
 
 # Python

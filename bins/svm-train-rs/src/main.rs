@@ -1,7 +1,9 @@
 use libsvm_rs::cross_validation::svm_cross_validation;
 use libsvm_rs::io::{format_g, load_problem, save_model};
 use libsvm_rs::train::svm_train;
-use libsvm_rs::{check_parameter, KernelType, SvmParameter, SvmType};
+use libsvm_rs::{
+    accuracy_percentage, check_parameter, regression_metrics, KernelType, SvmParameter, SvmType,
+};
 use std::path::Path;
 use std::process;
 
@@ -40,6 +42,15 @@ options:
     process::exit(1);
 }
 
+fn parse_flag_arg<'a>(args: &'a [String], i: &mut usize) -> &'a str {
+    if *i >= args.len() {
+        exit_with_help();
+    }
+    let value = &args[*i];
+    *i += 1;
+    value.as_str()
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
@@ -64,9 +75,7 @@ fn main() {
 
         // All other flags consume the next argument
         i += 1;
-        if i >= args.len() {
-            exit_with_help();
-        }
+        let value = parse_flag_arg(&args, &mut i);
 
         if flag.starts_with("-w") && flag.len() > 2 {
             // -wi weight: class label is in flag[2..]
@@ -74,7 +83,7 @@ fn main() {
                 eprintln!("Unknown option: {}", flag);
                 exit_with_help();
             });
-            let weight: f64 = args[i].parse().unwrap_or_else(|_| {
+            let weight: f64 = value.parse().unwrap_or_else(|_| {
                 eprintln!("Unknown option: {}", flag);
                 exit_with_help();
             });
@@ -82,7 +91,7 @@ fn main() {
         } else {
             match flag.as_bytes()[1] {
                 b's' => {
-                    param.svm_type = match args[i].parse::<i32>().unwrap_or(-1) {
+                    param.svm_type = match value.parse::<i32>().unwrap_or(-1) {
                         0 => SvmType::CSvc,
                         1 => SvmType::NuSvc,
                         2 => SvmType::OneClass,
@@ -92,7 +101,7 @@ fn main() {
                     };
                 }
                 b't' => {
-                    param.kernel_type = match args[i].parse::<i32>().unwrap_or(-1) {
+                    param.kernel_type = match value.parse::<i32>().unwrap_or(-1) {
                         0 => KernelType::Linear,
                         1 => KernelType::Polynomial,
                         2 => KernelType::Rbf,
@@ -102,38 +111,38 @@ fn main() {
                     };
                 }
                 b'd' => {
-                    param.degree = args[i].parse().unwrap_or_else(|_| exit_with_help());
+                    param.degree = value.parse().unwrap_or_else(|_| exit_with_help());
                 }
                 b'g' => {
-                    param.gamma = args[i].parse().unwrap_or_else(|_| exit_with_help());
+                    param.gamma = value.parse().unwrap_or_else(|_| exit_with_help());
                 }
                 b'r' => {
-                    param.coef0 = args[i].parse().unwrap_or_else(|_| exit_with_help());
+                    param.coef0 = value.parse().unwrap_or_else(|_| exit_with_help());
                 }
                 b'c' => {
-                    param.c = args[i].parse().unwrap_or_else(|_| exit_with_help());
+                    param.c = value.parse().unwrap_or_else(|_| exit_with_help());
                 }
                 b'n' => {
-                    param.nu = args[i].parse().unwrap_or_else(|_| exit_with_help());
+                    param.nu = value.parse().unwrap_or_else(|_| exit_with_help());
                 }
                 b'p' => {
-                    param.p = args[i].parse().unwrap_or_else(|_| exit_with_help());
+                    param.p = value.parse().unwrap_or_else(|_| exit_with_help());
                 }
                 b'm' => {
-                    param.cache_size = args[i].parse().unwrap_or_else(|_| exit_with_help());
+                    param.cache_size = value.parse().unwrap_or_else(|_| exit_with_help());
                 }
                 b'e' => {
-                    param.eps = args[i].parse().unwrap_or_else(|_| exit_with_help());
+                    param.eps = value.parse().unwrap_or_else(|_| exit_with_help());
                 }
                 b'h' => {
-                    param.shrinking = args[i].parse::<i32>().unwrap_or(1) != 0;
+                    param.shrinking = value.parse::<i32>().unwrap_or(1) != 0;
                 }
                 b'b' => {
-                    param.probability = args[i].parse::<i32>().unwrap_or(0) != 0;
+                    param.probability = value.parse::<i32>().unwrap_or(0) != 0;
                 }
                 b'v' => {
                     cross_validation = true;
-                    nr_fold = args[i].parse().unwrap_or(0);
+                    nr_fold = value.parse().unwrap_or(0);
                     if nr_fold < 2 {
                         eprintln!("n-fold cross validation: n must >= 2");
                         exit_with_help();
@@ -145,7 +154,6 @@ fn main() {
                 }
             }
         }
-        i += 1;
     }
 
     // Remaining: training_set_file [model_file]
@@ -208,39 +216,15 @@ fn main() {
 
 fn do_cross_validation(problem: &libsvm_rs::SvmProblem, param: &SvmParameter, nr_fold: usize) {
     let target = svm_cross_validation(problem, param, nr_fold);
-    let l = problem.labels.len();
-
     if matches!(param.svm_type, SvmType::EpsilonSvr | SvmType::NuSvr) {
-        let mut total_error = 0.0;
-        let (mut sumv, mut sumy, mut sumvv, mut sumyy, mut sumvy) = (0.0, 0.0, 0.0, 0.0, 0.0);
-        for (v, y) in target.iter().zip(problem.labels.iter()) {
-            total_error += (v - y) * (v - y);
-            sumv += v;
-            sumy += y;
-            sumvv += v * v;
-            sumyy += y * y;
-            sumvy += v * y;
-        }
-        let n = l as f64;
-        println!(
-            "Cross Validation Mean squared error = {}",
-            format_g(total_error / n)
-        );
-        let r2 = ((n * sumvy - sumv * sumy) * (n * sumvy - sumv * sumy))
-            / ((n * sumvv - sumv * sumv) * (n * sumyy - sumy * sumy));
+        let (mse, r2) = regression_metrics(&target, &problem.labels);
+        println!("Cross Validation Mean squared error = {}", format_g(mse));
         println!(
             "Cross Validation Squared correlation coefficient = {}",
             format_g(r2)
         );
     } else {
-        let correct = target
-            .iter()
-            .zip(problem.labels.iter())
-            .filter(|(&v, &y)| v == y)
-            .count();
-        println!(
-            "Cross Validation Accuracy = {}%",
-            format_g(100.0 * correct as f64 / l as f64)
-        );
+        let correct = accuracy_percentage(&target, &problem.labels);
+        println!("Cross Validation Accuracy = {}%", format_g(correct));
     }
 }
