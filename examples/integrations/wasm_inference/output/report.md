@@ -1,6 +1,6 @@
 # WASM Inference Benchmark Results
 
-Date: 2026-02-11 21:44:29Z
+Date: 2026-02-16 06:11:11Z
 
 ## Methodology
 
@@ -15,13 +15,13 @@ Date: 2026-02-11 21:44:29Z
 - Train rows: 180
 - Test rows: 90
 - Parameter: C-SVC, RBF kernel, C=1, gamma=1/13
-- Warmup: 1
-- Runs: 6
+- Warmup: 3
+- Runs: 20
 
 ## Timing Ratios (median)
 
-- Train wasm/C++: 0.933
-- Predict wasm/C++: 0.852
+- Train wasm/C++: 2.186
+- Predict wasm/C++: 1.875
 
 ## Correctness
 
