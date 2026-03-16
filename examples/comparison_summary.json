@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-03-09T06:05:00Z",
+  "generated_utc": "2026-03-16T06:24:06Z",
   "case_count": 41,
   "sources": [
     "/home/runner/work/libsvm-rs/libsvm-rs/examples/integrations/wasm_inference/output/results.json",
@@ -12,19 +12,19 @@
     "predict_max": 20
   },
   "train_ratio": {
-    "median": 0.9330658531874791,
-    "p05": 0.5885773504631049,
-    "p95": 1.3085103675131675,
-    "median_ci95_low": 0.819988301612391,
-    "median_ci95_high": 0.957694086889566,
-    "rust_faster_fraction": 0.7560975609756098
+    "median": 0.9301151194387461,
+    "p05": 0.61417752496015,
+    "p95": 1.2678100548898619,
+    "median_ci95_low": 0.8401847749341234,
+    "median_ci95_high": 0.9498358935203235,
+    "rust_faster_fraction": 0.7317073170731707
   },
   "predict_ratio": {
-    "median": 0.8050460556799346,
-    "p05": 0.642552805950747,
-    "p95": 0.9552953808067357,
-    "median_ci95_low": 0.7482278399466439,
-    "median_ci95_high": 0.8364189052799053,
-    "rust_faster_fraction": 0.975609756097561
+    "median": 0.8090931105118069,
+    "p05": 0.689121212707978,
+    "p95": 1.0804055839398636,
+    "median_ci95_low": 0.7934775634336888,
+    "median_ci95_high": 0.8250606192664215,
+    "rust_faster_fraction": 0.926829268292683
   }
 }
