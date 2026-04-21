@@ -142,11 +142,188 @@ fn str_to_kernel_type(s: &str) -> Option<KernelType> {
     }
 }
 
+// ─── Load options ────────────────────────────────────────────────────
+
+/// Resource caps applied while reading LIBSVM problem and model files.
+///
+/// LIBSVM text formats are linear in file size, but individual fields (e.g.
+/// `total_sv`, feature indices, per-line token counts) can be used by a
+/// malicious file to trigger disproportionate allocation or CPU work. The
+/// [`Default`] impl returns defaults tuned for **untrusted input**:
+///
+/// | Field               | Default        |
+/// |---------------------|----------------|
+/// | `max_bytes`         | 64 MiB         |
+/// | `max_line_len`      | 1 MiB          |
+/// | `max_sv`            | 10 000 000     |
+/// | `max_nr_class`      | 65 535         |
+/// | `max_feature_index` | 10 000 000     |
+///
+/// If you know the input is trusted (produced locally, read from an
+/// attestation-protected location, etc.) and you need to handle inputs
+/// larger than the defaults, call [`LoadOptions::trusted_input`] for an
+/// "unlimited" profile, or override specific fields:
+///
+/// ```ignore
+/// use libsvm_rs::io::{load_problem_from_reader_with_options, LoadOptions};
+///
+/// let opts = LoadOptions {
+///     max_bytes: 1 << 30, // 1 GiB for a trusted bulk file
+///     ..LoadOptions::default()
+/// };
+/// let problem = load_problem_from_reader_with_options(reader, &opts)?;
+/// ```
+///
+/// Exceeding any cap returns an [`SvmError::ParseError`] (problem files) or
+/// [`SvmError::ModelFormatError`] (model files) with a message identifying
+/// the field that tripped the limit.
+#[derive(Debug, Clone, Copy)]
+pub struct LoadOptions {
+    /// Maximum total number of bytes read from the source.
+    pub max_bytes: u64,
+    /// Maximum number of bytes in a single line (excluding the terminator).
+    pub max_line_len: usize,
+    /// Maximum value accepted for the `total_sv` header field in model files.
+    pub max_sv: usize,
+    /// Maximum value accepted for the `nr_class` header field in model files.
+    pub max_nr_class: usize,
+    /// Maximum feature index accepted in problem or model feature lists.
+    pub max_feature_index: i32,
+}
+
+impl Default for LoadOptions {
+    fn default() -> Self {
+        Self {
+            max_bytes: 64 * 1024 * 1024,
+            max_line_len: 1024 * 1024,
+            max_sv: MAX_TOTAL_SV,
+            max_nr_class: MAX_NR_CLASS,
+            max_feature_index: MAX_FEATURE_INDEX,
+        }
+    }
+}
+
+impl LoadOptions {
+    /// Options with all caps set to the type maximum.
+    ///
+    /// Use **only** for input that is fully trusted. Operating with
+    /// unlimited caps removes the first line of defense against malformed
+    /// or adversarial model / problem files.
+    pub fn trusted_input() -> Self {
+        Self {
+            max_bytes: u64::MAX,
+            max_line_len: usize::MAX,
+            max_sv: usize::MAX,
+            max_nr_class: usize::MAX,
+            max_feature_index: i32::MAX,
+        }
+    }
+}
+
+/// Read one line from `reader`, enforcing byte and line-length caps.
+///
+/// Returns `Ok(None)` on clean EOF. Updates `bytes_read` by the number of
+/// bytes actually consumed (including the line terminator).
+///
+/// Uses [`BufRead::fill_buf`] / [`BufRead::consume`] to pull at most a
+/// buffer's worth at a time and check both caps before committing bytes
+/// to the output buffer. A pathological unbounded line cannot grow the
+/// output buffer past `max_line_len` — the error fires before the next
+/// slice copy would push past the cap.
+fn read_line_capped(
+    reader: &mut dyn BufRead,
+    bytes_read: &mut u64,
+    max_bytes: u64,
+    max_line_len: usize,
+) -> std::io::Result<Option<String>> {
+    // One byte of slack on the per-line cap to accommodate `\r\n` line
+    // endings: `max_line_len` describes *content* length, so a line with
+    // the full allowed content plus CRLF consumes `max_line_len + 2` bytes
+    // total, of which one (the \r) would otherwise push us past the cap
+    // before the final `\n` arrives.
+    let per_line_raw_cap: u64 = (max_line_len as u64).saturating_add(1);
+
+    let mut buf: Vec<u8> = Vec::new();
+    let mut found_newline = false;
+
+    loop {
+        let available = reader.fill_buf()?;
+        if available.is_empty() {
+            break;
+        }
+
+        let take_n = match available.iter().position(|&b| b == b'\n') {
+            Some(pos) => pos + 1, // include the newline
+            None => available.len(),
+        };
+        let ends_with_newline = take_n > 0 && available[take_n - 1] == b'\n';
+
+        // Byte cap.
+        let new_bytes_read = bytes_read.saturating_add(take_n as u64);
+        if new_bytes_read > max_bytes {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("input exceeds max_bytes limit ({})", max_bytes),
+            ));
+        }
+
+        // Per-line cap. Content bytes excludes the trailing `\n` (if any);
+        // we allow one byte of slack for a possible `\r` preceding it.
+        let prospective_len = (buf.len() as u64).saturating_add(take_n as u64);
+        let content_bytes = if ends_with_newline {
+            prospective_len - 1
+        } else {
+            prospective_len
+        };
+        if content_bytes > per_line_raw_cap {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("line length exceeds max_line_len limit ({})", max_line_len),
+            ));
+        }
+
+        // NUL bytes have no legal use in LIBSVM text files.
+        if available[..take_n].contains(&0) {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "unexpected NUL byte in text input".to_string(),
+            ));
+        }
+
+        buf.extend_from_slice(&available[..take_n]);
+        reader.consume(take_n);
+        *bytes_read = new_bytes_read;
+
+        if ends_with_newline {
+            found_newline = true;
+            break;
+        }
+    }
+
+    if buf.is_empty() && !found_newline {
+        return Ok(None);
+    }
+
+    let line = String::from_utf8(buf)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))?;
+    Ok(Some(line))
+}
+
 // ─── Problem file I/O ────────────────────────────────────────────────
 
 /// Load an SVM problem from a file in LIBSVM sparse format.
 ///
 /// Format: `<label> <index1>:<value1> <index2>:<value2> ...`
+///
+/// Uses [`LoadOptions::default`] — appropriate for untrusted input. For
+/// trusted bulk files exceeding the defaults, use
+/// [`load_problem_from_reader_with_options`] with a custom [`LoadOptions`].
+///
+/// ### Complexity
+///
+/// Linear in file size for parsing and `O(n · d)` memory where `n` is the
+/// number of instances and `d` is the average number of non-zero features
+/// per instance. No per-row allocation is driven by an untrusted header.
 pub fn load_problem(path: &Path) -> Result<SvmProblem, SvmError> {
     let file = std::fs::File::open(path)?;
     let reader = std::io::BufReader::new(file);
@@ -154,18 +331,38 @@ pub fn load_problem(path: &Path) -> Result<SvmProblem, SvmError> {
 }
 
 /// Load an SVM problem from any buffered reader.
+///
+/// Uses [`LoadOptions::default`].
 pub fn load_problem_from_reader(reader: impl BufRead) -> Result<SvmProblem, SvmError> {
+    load_problem_from_reader_with_options(reader, &LoadOptions::default())
+}
+
+/// Load an SVM problem from any buffered reader, with explicit resource caps.
+///
+/// See [`LoadOptions`] for the meaning of each cap and for defaults tuned
+/// for untrusted input.
+pub fn load_problem_from_reader_with_options(
+    mut reader: impl BufRead,
+    options: &LoadOptions,
+) -> Result<SvmProblem, SvmError> {
     let mut labels = Vec::new();
     let mut instances = Vec::new();
+    let mut bytes_read: u64 = 0;
+    let mut line_idx: usize = 0;
 
-    for (line_idx, line_result) in reader.lines().enumerate() {
-        let line = line_result?;
-        let line = line.trim();
+    while let Some(raw) = read_line_capped(
+        &mut reader,
+        &mut bytes_read,
+        options.max_bytes,
+        options.max_line_len,
+    )? {
+        let line_num = line_idx + 1;
+        line_idx += 1;
+        let line = raw.trim();
         if line.is_empty() {
             continue;
         }
 
-        let line_num = line_idx + 1;
         let mut parts = line.split_whitespace();
 
         // Parse label
@@ -178,7 +375,7 @@ pub fn load_problem_from_reader(reader: impl BufRead) -> Result<SvmProblem, SvmE
             message: format!("invalid label: {}", label_str),
         })?;
 
-        // Parse features (must be in ascending index order)
+        // Parse features (must be in ascending index order).
         let mut nodes = Vec::new();
         let mut prev_index: i32 = 0;
         for token in parts {
@@ -186,7 +383,8 @@ pub fn load_problem_from_reader(reader: impl BufRead) -> Result<SvmProblem, SvmE
                 line: line_num,
                 message: format!("expected index:value, got: {}", token),
             })?;
-            let index: i32 = parse_feature_index_problem_line(line_num, idx_str)?;
+            let index: i32 =
+                parse_feature_index_problem_line(line_num, idx_str, options.max_feature_index)?;
 
             if !nodes.is_empty() && index <= prev_index {
                 return Err(SvmError::ParseError {
@@ -330,6 +528,16 @@ pub fn save_model_to_writer(mut w: impl Write, model: &SvmModel) -> Result<(), S
 }
 
 /// Load an SVM model from a file in the original LIBSVM format.
+///
+/// Uses [`LoadOptions::default`] — appropriate for untrusted input.
+///
+/// ### Complexity
+///
+/// The header parse is `O(nr_class)` in the worst case (due to `rho` /
+/// `label` / `nr_sv` array reads). The SV section is linear in the file
+/// size. Downstream consumers of the returned [`SvmModel`] — notably
+/// `group_classes` and probability estimation — are `O(k²)` on `k =
+/// nr_class`, bounded by [`LoadOptions::max_nr_class`].
 pub fn load_model(path: &Path) -> Result<SvmModel, SvmError> {
     let file = std::fs::File::open(path)?;
     let reader = std::io::BufReader::new(file);
@@ -337,8 +545,29 @@ pub fn load_model(path: &Path) -> Result<SvmModel, SvmError> {
 }
 
 /// Load an SVM model from any buffered reader.
+///
+/// Uses [`LoadOptions::default`].
 pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError> {
-    let mut lines = reader.lines();
+    load_model_from_reader_with_options(reader, &LoadOptions::default())
+}
+
+/// Load an SVM model from any buffered reader, with explicit resource caps.
+///
+/// See [`LoadOptions`] for the meaning of each cap and for defaults tuned
+/// for untrusted input.
+pub fn load_model_from_reader_with_options(
+    mut reader: impl BufRead,
+    options: &LoadOptions,
+) -> Result<SvmModel, SvmError> {
+    let mut bytes_read: u64 = 0;
+
+    // The `nr_class` / `total_sv` caps are the intersection of the
+    // module-level hard limits (`MAX_NR_CLASS`, `MAX_TOTAL_SV`) and the
+    // per-call `LoadOptions` overrides. A caller using
+    // `LoadOptions::trusted_input()` relaxes only down to the hard caps;
+    // it cannot exceed them. This is defense in depth.
+    let nr_class_cap = options.max_nr_class.min(MAX_NR_CLASS);
+    let total_sv_cap = options.max_sv.min(MAX_TOTAL_SV);
 
     // Defaults
     let mut param = SvmParameter::default();
@@ -351,20 +580,27 @@ pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError
     let mut prob_density_marks = Vec::new();
     let mut n_sv = Vec::new();
 
-    // Read header
+    // Read header.
     let mut line_num: usize = 0;
     loop {
-        let line = lines.next().ok_or_else(|| {
-            SvmError::ModelFormatError("unexpected end of file in header".into())
-        })??;
+        let raw = read_line_capped(
+            &mut reader,
+            &mut bytes_read,
+            options.max_bytes,
+            options.max_line_len,
+        )
+        .map_err(|e| SvmError::ModelFormatError(e.to_string()))?
+        .ok_or_else(|| SvmError::ModelFormatError("unexpected end of file in header".into()))?;
         line_num += 1;
-        let line = line.trim().to_string();
+        let line = raw.trim().to_string();
         if line.is_empty() {
             continue;
         }
 
         let mut parts = line.split_whitespace();
-        let cmd = parts.next().unwrap();
+        // `split_whitespace` on a non-empty trimmed string always yields at
+        // least one token — this `expect` guards the invariant at runtime.
+        let cmd = parts.next().expect("non-empty line has at least one token");
 
         match cmd {
             "svm_type" => {
@@ -403,19 +639,19 @@ pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError
             }
             "nr_class" => {
                 nr_class = parse_single(&mut parts, line_num, "nr_class")?;
-                if nr_class > MAX_NR_CLASS {
+                if nr_class > nr_class_cap {
                     return Err(SvmError::ModelFormatError(format!(
                         "line {}: nr_class exceeds limit ({})",
-                        line_num, MAX_NR_CLASS
+                        line_num, nr_class_cap
                     )));
                 }
             }
             "total_sv" => {
                 total_sv = parse_single(&mut parts, line_num, "total_sv")?;
-                if total_sv > MAX_TOTAL_SV {
+                if total_sv > total_sv_cap {
                     return Err(SvmError::ModelFormatError(format!(
                         "line {}: total_sv exceeds limit ({})",
-                        line_num, MAX_TOTAL_SV
+                        line_num, total_sv_cap
                     )));
                 }
             }
@@ -485,11 +721,16 @@ pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError
     let mut sv: Vec<Vec<SvmNode>> = Vec::new();
 
     while sv.len() < total_sv {
-        let line = lines.next().ok_or_else(|| {
-            SvmError::ModelFormatError("unexpected end of file in SV section".into())
-        })??;
+        let raw = read_line_capped(
+            &mut reader,
+            &mut bytes_read,
+            options.max_bytes,
+            options.max_line_len,
+        )
+        .map_err(|e| SvmError::ModelFormatError(e.to_string()))?
+        .ok_or_else(|| SvmError::ModelFormatError("unexpected end of file in SV section".into()))?;
         line_num += 1;
-        let line = line.trim();
+        let line = raw.trim();
         if line.is_empty() {
             // Skip blank lines without consuming an SV slot — the header's
             // `total_sv` must match the number of SV rows we actually collect.
@@ -523,7 +764,8 @@ pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError
                     line_num, token
                 ))
             })?;
-            let index: i32 = parse_feature_index_model_line(line_num, idx_str)?;
+            let index: i32 =
+                parse_feature_index_model_line(line_num, idx_str, options.max_feature_index)?;
 
             if !nodes.is_empty() && index <= prev_index {
                 return Err(SvmError::ModelFormatError(format!(
@@ -705,15 +947,23 @@ fn validate_model_header(
 
 // ─── Helper parsers ──────────────────────────────────────────────────
 
-fn parse_feature_index_problem_line(line_num: usize, idx_str: &str) -> Result<i32, SvmError> {
-    parse_feature_index(idx_str, MAX_FEATURE_INDEX).map_err(|msg| SvmError::ParseError {
+fn parse_feature_index_problem_line(
+    line_num: usize,
+    idx_str: &str,
+    max_feature_index: i32,
+) -> Result<i32, SvmError> {
+    parse_feature_index(idx_str, max_feature_index).map_err(|msg| SvmError::ParseError {
         line: line_num,
         message: msg,
     })
 }
 
-fn parse_feature_index_model_line(line_num: usize, idx_str: &str) -> Result<i32, SvmError> {
-    parse_feature_index(idx_str, MAX_FEATURE_INDEX)
+fn parse_feature_index_model_line(
+    line_num: usize,
+    idx_str: &str,
+    max_feature_index: i32,
+) -> Result<i32, SvmError> {
+    parse_feature_index(idx_str, max_feature_index)
         .map_err(|msg| SvmError::ModelFormatError(format!("line {}: {}", line_num, msg)))
 }
 
@@ -1269,6 +1519,191 @@ SV\n\
         let err = load_model_from_reader(&input[..]).unwrap_err();
         assert!(
             format!("{}", err).contains("feature indices must be ascending"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn load_options_default_caps_match_documented_values() {
+        let opts = LoadOptions::default();
+        assert_eq!(opts.max_bytes, 64 * 1024 * 1024);
+        assert_eq!(opts.max_line_len, 1024 * 1024);
+        assert_eq!(opts.max_sv, MAX_TOTAL_SV);
+        assert_eq!(opts.max_nr_class, MAX_NR_CLASS);
+        assert_eq!(opts.max_feature_index, MAX_FEATURE_INDEX);
+    }
+
+    #[test]
+    fn load_options_trusted_input_sets_type_maxes() {
+        let opts = LoadOptions::trusted_input();
+        assert_eq!(opts.max_bytes, u64::MAX);
+        assert_eq!(opts.max_line_len, usize::MAX);
+        assert_eq!(opts.max_sv, usize::MAX);
+        assert_eq!(opts.max_nr_class, usize::MAX);
+        assert_eq!(opts.max_feature_index, i32::MAX);
+    }
+
+    #[test]
+    fn problem_reader_rejects_file_over_max_bytes() {
+        // 20 bytes of content, cap at 10.
+        let input = b"+1 1:0.5\n+1 2:0.5\n";
+        let opts = LoadOptions {
+            max_bytes: 10,
+            ..LoadOptions::default()
+        };
+        let err = load_problem_from_reader_with_options(&input[..], &opts).unwrap_err();
+        assert!(
+            format!("{}", err).contains("max_bytes"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn problem_reader_rejects_line_over_max_line_len() {
+        // Build a line of 200 chars; cap max_line_len at 50.
+        let mut payload = String::from("+1 ");
+        for i in 1..=50 {
+            payload.push_str(&format!("{}:0.1 ", i));
+        }
+        payload.push('\n');
+        let opts = LoadOptions {
+            max_line_len: 50,
+            ..LoadOptions::default()
+        };
+        let err = load_problem_from_reader_with_options(payload.as_bytes(), &opts).unwrap_err();
+        assert!(
+            format!("{}", err).contains("max_line_len"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn problem_reader_accepts_line_at_max_line_len() {
+        // A line whose content (excluding trailing newline) is exactly
+        // max_line_len bytes must be accepted — the cap is inclusive.
+        let line_content = "+1 1:0.5";
+        let payload = format!("{}\n", line_content);
+        let opts = LoadOptions {
+            max_line_len: line_content.len(),
+            ..LoadOptions::default()
+        };
+        let problem = load_problem_from_reader_with_options(payload.as_bytes(), &opts).unwrap();
+        assert_eq!(problem.labels.len(), 1);
+    }
+
+    #[test]
+    fn problem_reader_tolerates_crlf_at_cap() {
+        // Same content length, but with \r\n. Total bytes on disk is
+        // content_len + 2; the helper allows one byte of slack for the \r.
+        let line_content = "+1 1:0.5";
+        let payload = format!("{}\r\n", line_content);
+        let opts = LoadOptions {
+            max_line_len: line_content.len(),
+            ..LoadOptions::default()
+        };
+        let problem = load_problem_from_reader_with_options(payload.as_bytes(), &opts).unwrap();
+        assert_eq!(problem.labels.len(), 1);
+    }
+
+    #[test]
+    fn problem_reader_rejects_nul_byte() {
+        // A stray NUL byte inside a line is rejected early — LIBSVM text
+        // files are ASCII, and a NUL is most likely truncated binary data.
+        let mut payload: Vec<u8> = b"+1 1:0.5".to_vec();
+        payload.push(0);
+        payload.extend_from_slice(b"\n");
+        let err = load_problem_from_reader(payload.as_slice()).unwrap_err();
+        assert!(
+            format!("{}", err).contains("NUL byte"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn model_reader_honors_max_nr_class_cap() {
+        // 100 is below both MAX_NR_CLASS and the 50 cap; the 50 cap should
+        // fire first.
+        let input = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 100\n\
+total_sv 1\n\
+rho 0\n\
+SV\n";
+        let opts = LoadOptions {
+            max_nr_class: 50,
+            ..LoadOptions::default()
+        };
+        let err = load_model_from_reader_with_options(&input[..], &opts).unwrap_err();
+        assert!(
+            format!("{}", err).contains("nr_class exceeds limit (50)"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn model_reader_honors_max_sv_cap() {
+        let input = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 2\n\
+total_sv 1000\n\
+rho 0\n\
+SV\n";
+        let opts = LoadOptions {
+            max_sv: 100,
+            ..LoadOptions::default()
+        };
+        let err = load_model_from_reader_with_options(&input[..], &opts).unwrap_err();
+        assert!(
+            format!("{}", err).contains("total_sv exceeds limit (100)"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn trusted_input_cannot_exceed_hard_module_caps() {
+        // `LoadOptions::trusted_input()` sets caps to usize::MAX / u64::MAX,
+        // but the module-level hard caps (MAX_NR_CLASS, MAX_TOTAL_SV) still
+        // apply as an upper bound. This is defense-in-depth.
+        let huge_nr_class = format!(
+            "svm_type c_svc\n\
+kernel_type linear\n\
+nr_class {}\n\
+total_sv 1\n\
+rho 0\n\
+SV\n",
+            MAX_NR_CLASS + 1
+        );
+        let opts = LoadOptions::trusted_input();
+        let err = load_model_from_reader_with_options(huge_nr_class.as_bytes(), &opts).unwrap_err();
+        assert!(
+            format!("{}", err).contains("nr_class exceeds limit"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn model_reader_honors_max_feature_index_cap() {
+        let input = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 2\n\
+total_sv 1\n\
+rho 0\n\
+SV\n\
+0.1 50:0.5\n";
+        let opts = LoadOptions {
+            max_feature_index: 10,
+            ..LoadOptions::default()
+        };
+        let err = load_model_from_reader_with_options(&input[..], &opts).unwrap_err();
+        assert!(
+            format!("{}", err).contains("feature index 50 exceeds limit (10)"),
             "unexpected error: {}",
             err
         );

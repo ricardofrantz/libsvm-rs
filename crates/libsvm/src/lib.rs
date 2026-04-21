@@ -50,5 +50,6 @@ pub mod predict;
 pub mod probability;
 
 pub use error::SvmError;
+pub use io::LoadOptions;
 pub use metrics::{accuracy_percentage, regression_metrics};
 pub use types::*;
