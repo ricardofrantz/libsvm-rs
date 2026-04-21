@@ -1,26 +1,39 @@
 name: Fuzz
 
 on:
+  push:
+    branches: [master]
   schedule:
-    - cron: '0 4 * * 1'
+    - cron: '0 3 * * 0'  # Sunday 03:00 UTC — deeper weekly run
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   fuzz:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         target: [parse_problem, parse_model]
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@5b842231ba77f5c045dba54ac5560fed2db780e2  # nightly
       - name: Install cargo-fuzz
-        run: cargo install cargo-fuzz
-      - name: Fuzz ${{ matrix.target }}
-        run: cd crates/libsvm && cargo +nightly fuzz run ${{ matrix.target }} -- -max_total_time=300
+        run: cargo install cargo-fuzz --locked
+      - name: Fuzz target
+        env:
+          FUZZ_TARGET: ${{ matrix.target }}
+          MAX_TIME: ${{ github.event_name == 'schedule' && '7200' || '300' }}
+        run: |
+          cd crates/libsvm
+          cargo +nightly fuzz run "$FUZZ_TARGET" -- -max_total_time="$MAX_TIME"
       - name: Upload crash artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: fuzz-crash-${{ matrix.target }}
           path: crates/libsvm/fuzz/artifacts/

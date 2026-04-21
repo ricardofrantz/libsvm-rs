@@ -3,7 +3,6 @@
 
 # Temporary files
 .tmp/
-Cargo.lock
 
 # Python
 __pycache__/
