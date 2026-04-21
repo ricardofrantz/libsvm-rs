@@ -456,18 +456,43 @@ pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError
         }
     }
 
-    // Read SV section
-    let m = if nr_class > 1 { nr_class - 1 } else { 1 };
-    let mut sv_coef: Vec<Vec<f64>> = (0..m).map(|_| Vec::with_capacity(total_sv)).collect();
-    let mut sv: Vec<Vec<SvmNode>> = Vec::with_capacity(total_sv);
+    // Cross-consistency checks on the header.
+    //
+    // These run before any per-SV allocation so malformed files are rejected
+    // early, and so downstream code can rely on structural invariants (e.g.
+    // `rho.len() == nr_class * (nr_class - 1) / 2` for multiclass).
+    validate_model_header(
+        param.svm_type,
+        nr_class,
+        total_sv,
+        &rho,
+        &label,
+        &prob_a,
+        &prob_b,
+        &prob_density_marks,
+        &n_sv,
+    )?;
 
-    for _ in 0..total_sv {
+    // Read SV section.
+    //
+    // SECURITY: we do NOT preallocate with `total_sv` capacity. A malicious
+    // file could claim up to `MAX_TOTAL_SV` support vectors in its header,
+    // which would trigger terabyte-scale reservations before any real data is
+    // read. Amortized `Vec` growth caps peak memory at the actually-parsed
+    // payload.
+    let m = if nr_class > 1 { nr_class - 1 } else { 1 };
+    let mut sv_coef: Vec<Vec<f64>> = (0..m).map(|_| Vec::new()).collect();
+    let mut sv: Vec<Vec<SvmNode>> = Vec::new();
+
+    while sv.len() < total_sv {
         let line = lines.next().ok_or_else(|| {
             SvmError::ModelFormatError("unexpected end of file in SV section".into())
         })??;
         line_num += 1;
         let line = line.trim();
         if line.is_empty() {
+            // Skip blank lines without consuming an SV slot — the header's
+            // `total_sv` must match the number of SV rows we actually collect.
             continue;
         }
 
@@ -487,8 +512,10 @@ pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError
             coef_row.push(val);
         }
 
-        // Remaining tokens are index:value pairs
+        // Remaining tokens are index:value pairs (ascending index order, same
+        // invariant as the problem-file parser).
         let mut nodes = Vec::new();
+        let mut prev_index: i32 = 0;
         for token in parts {
             let (idx_str, val_str) = token.split_once(':').ok_or_else(|| {
                 SvmError::ModelFormatError(format!(
@@ -498,9 +525,17 @@ pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError
             })?;
             let index: i32 = parse_feature_index_model_line(line_num, idx_str)?;
 
+            if !nodes.is_empty() && index <= prev_index {
+                return Err(SvmError::ModelFormatError(format!(
+                    "line {}: feature indices must be ascending: {} follows {}",
+                    line_num, index, prev_index
+                )));
+            }
+
             let value: f64 = val_str.parse().map_err(|_| {
                 SvmError::ModelFormatError(format!("line {}: invalid value: {}", line_num, val_str))
             })?;
+            prev_index = index;
             nodes.push(SvmNode { index, value });
         }
         sv.push(nodes);
@@ -519,6 +554,153 @@ pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError
         label,
         n_sv,
     })
+}
+
+// ─── Cross-consistency validation ────────────────────────────────────
+
+/// Validate model-header invariants before reading the SV section.
+///
+/// A malformed or adversarial model file can pass individual field parses
+/// and still describe a structurally impossible SVM. This gate rejects the
+/// mismatch early, before any allocation keyed on `total_sv`, so downstream
+/// code (prediction, probability estimation) can rely on the usual LIBSVM
+/// shape contracts:
+///
+/// * `rho.len() == k * (k - 1) / 2` for `k = nr_class` on classification,
+///   `rho.len() == 1` for one-class / regression (where `nr_class == 2`).
+/// * `label.len() == nr_class` and `n_sv.len() == nr_class` if supplied.
+/// * `sum(n_sv) == total_sv` if `n_sv` is supplied.
+/// * `prob_a` / `prob_b` (if supplied) match the expected decision-function
+///   count, and `prob_density_marks` only appears on one-class models.
+///
+/// Optional fields (e.g. `label`, `n_sv`, `probA`) are only validated when
+/// present, because minimal hand-written fixtures and some legacy writers
+/// omit them; the invariant "if present, must be consistent" is what matters
+/// for safety.
+#[allow(clippy::too_many_arguments)]
+fn validate_model_header(
+    svm_type: SvmType,
+    nr_class: usize,
+    total_sv: usize,
+    rho: &[f64],
+    label: &[i32],
+    prob_a: &[f64],
+    prob_b: &[f64],
+    prob_density_marks: &[f64],
+    n_sv: &[usize],
+) -> Result<(), SvmError> {
+    let is_classification = matches!(svm_type, SvmType::CSvc | SvmType::NuSvc);
+    let is_regression = matches!(svm_type, SvmType::EpsilonSvr | SvmType::NuSvr);
+    let is_one_class = matches!(svm_type, SvmType::OneClass);
+
+    // nr_class must be at least 2 under the LIBSVM convention (regression and
+    // one-class store nr_class=2 as well, because the one-vs-one scaffolding
+    // is reused). nr_class==0 or 1 would yield `m = nr_class - 1 = 0` or
+    // underflow-prone arithmetic elsewhere.
+    if nr_class < 2 {
+        return Err(SvmError::ModelFormatError(format!(
+            "nr_class must be >= 2, got {}",
+            nr_class
+        )));
+    }
+
+    // Expected rho length depends on svm_type.
+    let expected_rho = if is_classification {
+        nr_class * (nr_class - 1) / 2
+    } else {
+        1
+    };
+    if rho.len() != expected_rho {
+        return Err(SvmError::ModelFormatError(format!(
+            "rho has {} entries, expected {} for svm_type {}",
+            rho.len(),
+            expected_rho,
+            svm_type_to_str(svm_type)
+        )));
+    }
+
+    // label is mandatory shape on classification, absent on regression/one-class.
+    if !label.is_empty() {
+        if !is_classification {
+            return Err(SvmError::ModelFormatError(format!(
+                "label is only valid for classification, got {} entries on svm_type {}",
+                label.len(),
+                svm_type_to_str(svm_type)
+            )));
+        }
+        if label.len() != nr_class {
+            return Err(SvmError::ModelFormatError(format!(
+                "label has {} entries, expected nr_class ({})",
+                label.len(),
+                nr_class
+            )));
+        }
+    }
+
+    // n_sv: same shape rule; if present on classification, sum must equal total_sv.
+    if !n_sv.is_empty() {
+        if !is_classification {
+            return Err(SvmError::ModelFormatError(format!(
+                "nr_sv is only valid for classification, got {} entries on svm_type {}",
+                n_sv.len(),
+                svm_type_to_str(svm_type)
+            )));
+        }
+        if n_sv.len() != nr_class {
+            return Err(SvmError::ModelFormatError(format!(
+                "nr_sv has {} entries, expected nr_class ({})",
+                n_sv.len(),
+                nr_class
+            )));
+        }
+        // Use checked_add to prevent silent overflow on malicious huge values.
+        // MAX_TOTAL_SV bounds total_sv already; n_sv values are parsed as
+        // `usize` and otherwise unbounded until this sum-check.
+        let mut sum: usize = 0;
+        for &n in n_sv {
+            sum = sum.checked_add(n).ok_or_else(|| {
+                SvmError::ModelFormatError("nr_sv entries overflow usize when summed".into())
+            })?;
+        }
+        if sum != total_sv {
+            return Err(SvmError::ModelFormatError(format!(
+                "sum of nr_sv entries ({}) does not match total_sv ({})",
+                sum, total_sv
+            )));
+        }
+    }
+
+    // Probability arrays: must either be absent or length-match rho.
+    if !prob_a.is_empty() && prob_a.len() != expected_rho {
+        return Err(SvmError::ModelFormatError(format!(
+            "probA has {} entries, expected {}",
+            prob_a.len(),
+            expected_rho
+        )));
+    }
+    if !prob_b.is_empty() && prob_b.len() != expected_rho {
+        return Err(SvmError::ModelFormatError(format!(
+            "probB has {} entries, expected {}",
+            prob_b.len(),
+            expected_rho
+        )));
+    }
+
+    // prob_density_marks is only meaningful for one-class.
+    if !prob_density_marks.is_empty() && !is_one_class {
+        return Err(SvmError::ModelFormatError(format!(
+            "prob_density_marks is only valid for one-class SVM, got {} entries on svm_type {}",
+            prob_density_marks.len(),
+            svm_type_to_str(svm_type)
+        )));
+    }
+
+    // Regression/one-class should not carry classification-only artifacts.
+    // (Already caught above via `label` / `n_sv` branches; this assertion
+    // keeps the intent self-documenting for future maintainers.)
+    let _ = is_regression;
+
+    Ok(())
 }
 
 // ─── Helper parsers ──────────────────────────────────────────────────
@@ -898,6 +1080,222 @@ SV\n\
 0.1 1:0.5\n";
         let err = load_model_from_reader(&eof_sv[..]).unwrap_err();
         assert!(format!("{}", err).contains("unexpected end of file in SV section"));
+    }
+
+    #[test]
+    fn reject_rho_length_mismatch_for_classification() {
+        // CSvc with nr_class=3 expects rho.len() == 3. Supplying 1 entry
+        // reveals either a malformed file or an intentional substitution.
+        let input = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 3\n\
+total_sv 3\n\
+rho 0\n\
+SV\n";
+        let err = load_model_from_reader(&input[..]).unwrap_err();
+        assert!(
+            format!("{}", err).contains("rho has 1 entries, expected 3"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn reject_rho_length_mismatch_for_regression() {
+        // SVR expects exactly 1 rho entry; 2 entries is inconsistent.
+        let input = b"svm_type epsilon_svr\n\
+kernel_type linear\n\
+nr_class 2\n\
+total_sv 0\n\
+rho 0 1\n\
+SV\n";
+        let err = load_model_from_reader(&input[..]).unwrap_err();
+        assert!(
+            format!("{}", err).contains("rho has 2 entries, expected 1"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn reject_label_on_regression() {
+        // label is classification-only; carrying it on SVR is a red flag.
+        let input = b"svm_type epsilon_svr\n\
+kernel_type linear\n\
+nr_class 2\n\
+total_sv 0\n\
+rho 0\n\
+label 1 -1\n\
+SV\n";
+        let err = load_model_from_reader(&input[..]).unwrap_err();
+        assert!(
+            format!("{}", err).contains("label is only valid for classification"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn reject_label_length_mismatch() {
+        let input = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 3\n\
+total_sv 0\n\
+rho 0 0 0\n\
+label 1 -1\n\
+SV\n";
+        let err = load_model_from_reader(&input[..]).unwrap_err();
+        assert!(
+            format!("{}", err).contains("label has 2 entries, expected nr_class (3)"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn reject_nr_sv_sum_mismatch() {
+        // total_sv=5 but nr_sv sums to 3. An inconsistent header like this
+        // could previously pass and leave downstream code with stale assumptions.
+        let input = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 2\n\
+total_sv 5\n\
+rho 0\n\
+label 1 -1\n\
+nr_sv 1 2\n\
+SV\n";
+        let err = load_model_from_reader(&input[..]).unwrap_err();
+        assert!(
+            format!("{}", err).contains("sum of nr_sv entries (3) does not match total_sv (5)"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn reject_nr_sv_length_mismatch() {
+        let input = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 3\n\
+total_sv 3\n\
+rho 0 0 0\n\
+label 1 -1 0\n\
+nr_sv 1 2\n\
+SV\n";
+        let err = load_model_from_reader(&input[..]).unwrap_err();
+        assert!(
+            format!("{}", err).contains("nr_sv has 2 entries, expected nr_class (3)"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn reject_proba_length_mismatch() {
+        let input = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 3\n\
+total_sv 0\n\
+rho 0 0 0\n\
+probA 0.1 0.2\n\
+SV\n";
+        let err = load_model_from_reader(&input[..]).unwrap_err();
+        assert!(
+            format!("{}", err).contains("probA has 2 entries, expected 3"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn reject_prob_density_marks_on_csvc() {
+        let input = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 2\n\
+total_sv 0\n\
+rho 0\n\
+prob_density_marks 0.1 0.2\n\
+SV\n";
+        let err = load_model_from_reader(&input[..]).unwrap_err();
+        assert!(
+            format!("{}", err).contains("prob_density_marks is only valid for one-class SVM"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn reject_nr_class_below_two() {
+        let input = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 1\n\
+total_sv 0\n\
+rho\n\
+SV\n";
+        let err = load_model_from_reader(&input[..]).unwrap_err();
+        assert!(
+            format!("{}", err).contains("nr_class must be >= 2, got 1"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn reject_sv_feature_indices_not_ascending() {
+        let input = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 2\n\
+total_sv 1\n\
+rho 0\n\
+SV\n\
+0.1 3:0.5 1:0.3\n";
+        let err = load_model_from_reader(&input[..]).unwrap_err();
+        assert!(
+            format!("{}", err).contains("feature indices must be ascending"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn reject_sv_feature_index_duplicated() {
+        let input = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 2\n\
+total_sv 1\n\
+rho 0\n\
+SV\n\
+0.1 1:0.5 1:0.3\n";
+        let err = load_model_from_reader(&input[..]).unwrap_err();
+        assert!(
+            format!("{}", err).contains("feature indices must be ascending"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn sv_count_loop_counts_nonblank_lines_only() {
+        // A blank line inside the SV section must NOT be billed against
+        // total_sv — parsing must terminate only after `total_sv` real SV
+        // rows have been collected. This guards the loop rewrite from
+        // `for _ in 0..total_sv { if empty { continue } ... }`, which would
+        // silently accept a model with fewer SVs than the header claims.
+        let input = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 2\n\
+total_sv 2\n\
+rho 0\n\
+label 1 -1\n\
+nr_sv 1 1\n\
+SV\n\
+\n\
+0.1 1:0.5\n\
+\n\
+-0.1 2:0.5\n";
+        let model = load_model_from_reader(&input[..]).unwrap();
+        assert_eq!(model.sv.len(), 2);
+        assert_eq!(model.sv_coef[0].len(), 2);
     }
 
     #[test]
