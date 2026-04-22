@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-04-22
+
 ### Added
 
 - `LoadOptions` and explicit `load_*_from_reader_with_options` entrypoints for
@@ -175,7 +177,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Parameter validation with ν-SVC feasibility check
 - 38 tests
 
-[Unreleased]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.5.0...v0.5.1

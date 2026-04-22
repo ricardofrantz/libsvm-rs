@@ -137,7 +137,7 @@ controlled.
 
 ```toml
 [dependencies]
-libsvm-rs = "0.7"
+libsvm-rs = "0.8"
 ```
 
 ### CLI tools

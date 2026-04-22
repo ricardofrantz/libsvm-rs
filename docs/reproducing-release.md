@@ -5,7 +5,7 @@ reproducible from the tagged source tree.
 
 ## Inputs
 
-- Tagged source checkout, for example `v0.7.0`.
+- Tagged source checkout, for example `v0.8.0`.
 - The matching GitHub Release archive for one target.
 - Rust toolchain pinned by `rust-toolchain.toml`.
 - Cargo lockfile from the tag.
@@ -14,13 +14,13 @@ reproducible from the tagged source tree.
 
 ```sh
 git fetch --tags
-git checkout v0.7.0
+git checkout v0.8.0
 cargo build --release --locked --target x86_64-unknown-linux-gnu
 mkdir -p .tmp/reproduce-release
 cp target/x86_64-unknown-linux-gnu/release/svm-train-rs .tmp/reproduce-release/
 cp target/x86_64-unknown-linux-gnu/release/svm-predict-rs .tmp/reproduce-release/
 cp target/x86_64-unknown-linux-gnu/release/svm-scale-rs .tmp/reproduce-release/
-tar czf .tmp/libsvm-rs-v0.7.0-x86_64-unknown-linux-gnu.tar.gz -C .tmp/reproduce-release .
+tar czf .tmp/libsvm-rs-v0.8.0-x86_64-unknown-linux-gnu.tar.gz -C .tmp/reproduce-release .
 ```
 
 Then unpack the downloaded release archive and compare file names, executable
@@ -28,8 +28,8 @@ presence, and command behavior:
 
 ```sh
 mkdir -p .tmp/release-downloaded .tmp/release-local
-tar xzf libsvm-rs-v0.7.0-x86_64-unknown-linux-gnu.tar.gz -C .tmp/release-downloaded
-tar xzf .tmp/libsvm-rs-v0.7.0-x86_64-unknown-linux-gnu.tar.gz -C .tmp/release-local
+tar xzf libsvm-rs-v0.8.0-x86_64-unknown-linux-gnu.tar.gz -C .tmp/release-downloaded
+tar xzf .tmp/libsvm-rs-v0.8.0-x86_64-unknown-linux-gnu.tar.gz -C .tmp/release-local
 find .tmp/release-downloaded .tmp/release-local -maxdepth 1 -type f -print | sort
 .tmp/release-local/svm-train-rs --help >/dev/null
 .tmp/release-local/svm-predict-rs --help >/dev/null
