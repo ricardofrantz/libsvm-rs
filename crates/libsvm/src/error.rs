@@ -1,3 +1,12 @@
+//! Error types returned by `libsvm-rs`.
+//!
+//! Loader errors are part of the crate's untrusted-input boundary. Problem
+//! files report line-oriented parse failures with [`SvmError::ParseError`],
+//! model files report structural format failures with
+//! [`SvmError::ModelFormatError`], and filesystem/reader failures use
+//! [`SvmError::Io`]. Training parameter validation uses
+//! [`SvmError::InvalidParameter`].
+
 /// Errors returned by libsvm-rs operations.
 #[derive(Debug, thiserror::Error)]
 pub enum SvmError {

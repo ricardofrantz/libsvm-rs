@@ -10,6 +10,9 @@ on:
 permissions:
   contents: read
 
+env:
+  FUZZ_TOOLCHAIN: nightly-2026-03-08
+
 jobs:
   fuzz:
     runs-on: ubuntu-latest
@@ -22,6 +25,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@5b842231ba77f5c045dba54ac5560fed2db780e2  # nightly
+        with:
+          toolchain: ${{ env.FUZZ_TOOLCHAIN }}
       - name: Install cargo-fuzz
         run: cargo install cargo-fuzz --locked
       - name: Fuzz target
@@ -30,7 +35,7 @@ jobs:
           MAX_TIME: ${{ github.event_name == 'schedule' && '7200' || '300' }}
         run: |
           cd crates/libsvm
-          cargo +nightly fuzz run "$FUZZ_TARGET" -- -max_total_time="$MAX_TIME"
+          cargo +"$FUZZ_TOOLCHAIN" fuzz run "$FUZZ_TARGET" -- -max_total_time="$MAX_TIME"
       - name: Upload crash artifacts
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4

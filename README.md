@@ -1,11 +1,123 @@
 # libsvm-rs
 
-`libsvm-rs` is a pure Rust implementation of [LIBSVM](https://github.com/cjlin1/libsvm) (v337, December 2025) focused on scientific reproducibility and upstream parity. It preserves LIBSVM model format and CLI behavior, ships reproducible Rust-vs-C/C++ comparison pipelines (including figures and benchmark summaries), and targets numerical equivalence (typically around `1e-8` tolerance) rather than bitwise identity against the upstream reference implementation.
+**FFI-free, Rust-native LIBSVM-compatible SVM training and prediction.**
+
+`libsvm-rs` is a pure Rust implementation of
+[LIBSVM](https://github.com/cjlin1/libsvm) for projects that want LIBSVM
+model/data compatibility without linking to the C/C++ library. It supports the
+same SVM families, kernels, sparse text format, model files, and command-line
+workflow as upstream LIBSVM, while keeping the implementation auditable from
+Rust.
+
+The goal is numerical equivalence and operational compatibility, not bitwise
+identity. The included verification pipeline compares this implementation
+against a pinned upstream LIBSVM reference across classification, regression,
+one-class, probability, and precomputed-kernel cases.
 
 [![Crates.io](https://img.shields.io/crates/v/libsvm-rs.svg)](https://crates.io/crates/libsvm-rs)
 [![Documentation](https://docs.rs/libsvm-rs/badge.svg)](https://docs.rs/libsvm-rs)
 [![CI](https://github.com/ricardofrantz/libsvm-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/ricardofrantz/libsvm-rs/actions)
+[![MSRV](https://img.shields.io/badge/MSRV-1.75-blue.svg)](Cargo.toml)
 [![License](https://img.shields.io/badge/license-BSD--3-blue.svg)](LICENSE)
+
+## Why libsvm-rs?
+
+| If you need... | `libsvm-rs` gives you... |
+|---|---|
+| Rust-native deployment | No C runtime or `libsvm-sys2` FFI dependency |
+| LIBSVM interoperability | Reads and writes LIBSVM sparse problem files and model files |
+| Familiar command-line tools | `svm-train-rs`, `svm-predict-rs`, and `svm-scale-rs` |
+| Auditable implementation | Solver, kernels, prediction, probability, and I/O are implemented in Rust |
+| Parity evidence | Reproducible differential tests against pinned upstream LIBSVM |
+| Small dependency surface | One runtime dependency: `thiserror` |
+
+## How is this different from the `libsvm` crate?
+
+The existing [`libsvm`](https://docs.rs/libsvm/latest/libsvm/) crate provides
+high-level Rust bindings to the C LIBSVM library through `libsvm-sys2`.
+That is the right choice if you explicitly want the original C implementation
+from Rust.
+
+`libsvm-rs` is different: it reimplements the LIBSVM algorithms and file formats
+in Rust. Use it when you want Rust-native deployment, easier cross-compilation,
+or an implementation that can be inspected and tested without crossing an FFI
+boundary.
+
+## Performance Snapshot
+
+Native CLI benchmarks compare Rust binaries (`svm-*-rs`) against the vendored C
+LIBSVM reference on the same datasets and parameters. Ratios below `1.0` mean
+Rust was faster in the measured run.
+
+| Operation | Cases | Rust/C median ratio | Result |
+|---|---:|---:|---|
+| `predict` | 40 | `0.804` | Rust faster on median |
+| `predict_probability` | 30 | `0.834` | Rust faster on median |
+| `train` | 40 | `0.916` | Rust slightly faster on median |
+| `train_probability` | 30 | `1.025` | Rust slightly slower on median |
+
+Rust is not uniformly faster than C LIBSVM. The included native benchmarks show
+strong prediction performance and comparable training performance, with some
+slower probability-training cases. See
+[`reference/benchmark_report.md`](reference/benchmark_report.md) and
+[`examples/comparison_summary.json`](examples/comparison_summary.json).
+
+## Parity Status
+
+Current full differential suite against pinned upstream LIBSVM v337:
+
+| Scope | Pass | Warn | Fail | Skip |
+|---|---:|---:|---:|---:|
+| 250 configurations | 236 | 4 | 0 | 10 |
+
+The warnings are documented numerical near-parity cases, not prediction-logic
+failures. See [`reference/differential_report.md`](reference/differential_report.md)
+and [`reference/tolerance_policy.md`](reference/tolerance_policy.md).
+
+## Security Considerations
+
+`libsvm-rs` treats `.libsvm` problem files and `.model` files as untrusted text
+input by default.
+
+- Default loaders enforce byte, line-length, support-vector, class-count, and
+  feature-index caps through
+  [`LoadOptions`](https://docs.rs/libsvm-rs/latest/libsvm_rs/io/struct.LoadOptions.html).
+- Problem files reject malformed `index:value` tokens, non-ascending feature
+  indices, over-limit feature indices, oversized input, oversized lines, and
+  embedded NUL bytes.
+- Model files additionally validate header consistency before support-vector
+  allocation: `nr_class`, `total_sv`, `rho`, `label`, `nr_sv`, `probA`,
+  `probB`, probability-density marks, and precomputed-kernel rows must agree.
+- Public loader paths return structured errors for malformed text input within
+  the configured caps; they should not panic on adversarial files.
+
+The loaders do not prove that a model is statistically meaningful, was trained
+from a specific dataset, is safe to use for a regulated decision, or is
+cryptographically authentic. Constant-time arithmetic, side-channel resistance,
+sandboxed execution, and model signing are out of scope for this crate. Use
+`LoadOptions::trusted_input()` only for files whose source and size are already
+controlled.
+
+## When to Use It
+
+- You are building a Rust service or CLI and want SVM training/prediction
+  without a C build or runtime dependency.
+- You already have LIBSVM-format data or models and want to keep that workflow.
+- You need C-SVC, nu-SVC, one-class SVM, epsilon-SVR, or nu-SVR with standard
+  LIBSVM kernels.
+- You want a small, inspectable Rust implementation for scientific or embedded
+  deployment work.
+
+## When Not to Use It
+
+- If you need exact bit-for-bit identity with upstream LIBSVM, use upstream
+  LIBSVM directly.
+- If you only need Python workflows, scikit-learn already wraps LIBSVM for
+  `SVC`, `SVR`, and `OneClassSVM`.
+- For very large linear problems, prefer `liblinear`, `LinearSVC`, SGD-style
+  methods, or kernel approximations.
+- If you need GPU training or online/incremental updates, this crate does not
+  provide them.
 
 ## Features
 
@@ -15,7 +127,8 @@
 - **Probability estimation** (`-b 1`): Platt scaling for binary classification, pairwise coupling for multiclass, Laplace-corrected predictions for regression, density-based marks for one-class
 - **Cross-validation**: stratified k-fold for classification (preserves class proportions), simple k-fold for regression/one-class
 - **CLI tools**: `svm-train-rs`, `svm-predict-rs`, `svm-scale-rs` — drop-in replacements matching upstream flag syntax
-- **Minimal dependencies**: zero runtime deps beyond `thiserror`; `rayon` is feature-gated for future parallel cross-validation
+- **FFI-free implementation**: no C runtime dependency and no `libsvm-sys2` wrapper layer
+- **Minimal dependencies**: one runtime dependency (`thiserror`); `rayon` is feature-gated for future parallel cross-validation
 - **Verification pipeline**: upstream parity locked to LIBSVM v337 with 250-configuration differential testing across all SVM types, kernel types, datasets, and parameter variations
 
 ## Installation
@@ -256,7 +369,7 @@ This confirms the drift comes from training numerics, not prediction logic.
 | Coverage | `reference/coverage_report.md` |
 | Performance | `reference/benchmark_results.json`, `reference/benchmark_report.md` |
 | Datasets | `reference/dataset_manifest.json`, `data/generated/` |
-| Security | `SECURITY_AUDIT.md` |
+| Security | `deny.toml`, `crates/libsvm/fuzz/README.md`, `CHANGELOG.md` |
 
 ### Rust vs C++ Timing Figure
 

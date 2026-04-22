@@ -1,7 +1,7 @@
 use libsvm_rs::io::{format_17g, format_g};
 use libsvm_rs::util::MAX_FEATURE_INDEX;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{self, BufRead, BufReader, Write};
 use std::process;
 
 fn exit_with_help() -> ! {
@@ -48,6 +48,27 @@ fn parse_feature_index_or_exit(idx_str: &str) -> i32 {
         process::exit(1);
     }
     index
+}
+
+fn open_file_or_exit(filename: &str) -> File {
+    File::open(filename).unwrap_or_else(|e| {
+        eprintln!("can't open file {}: {}", filename, e);
+        process::exit(1);
+    })
+}
+
+fn read_line_or_exit(line: io::Result<String>, filename: &str) -> String {
+    line.unwrap_or_else(|e| {
+        eprintln!("can't read file {}: {}", filename, e);
+        process::exit(1);
+    })
+}
+
+fn write_or_exit(result: io::Result<()>, filename: &str) {
+    result.unwrap_or_else(|e| {
+        eprintln!("can't write file {}: {}", filename, e);
+        process::exit(1);
+    });
 }
 
 fn warn_missing_scale_feature(index: i32, data_filename: &str, rfile: &str) {
@@ -176,13 +197,10 @@ fn main() {
     }
 
     // Scan data file for max_index and count nonzeros
-    let f = File::open(data_filename).unwrap_or_else(|_| {
-        eprintln!("can't open file {}", data_filename);
-        process::exit(1);
-    });
+    let f = open_file_or_exit(data_filename);
     let reader = BufReader::new(f);
     for line in reader.lines() {
-        let line = line.unwrap();
+        let line = read_line_or_exit(line, data_filename);
         let mut parts = line.split_whitespace();
         parts.next(); // skip label
         for token in parts {
@@ -201,10 +219,10 @@ fn main() {
     let mut y_max = f64::NEG_INFINITY;
     let mut y_min = f64::INFINITY;
 
-    let f = File::open(data_filename).unwrap();
+    let f = open_file_or_exit(data_filename);
     let reader = BufReader::new(f);
     for line in reader.lines() {
-        let line = line.unwrap();
+        let line = read_line_or_exit(line, data_filename);
         let mut parts = line.split_whitespace();
 
         // Parse label
@@ -335,23 +353,34 @@ fn main() {
             process::exit(1);
         });
         if y_scaling {
-            writeln!(out, "y").unwrap();
-            writeln!(out, "{} {}", format_17g(y_lower), format_17g(y_upper)).unwrap();
-            writeln!(out, "{} {}", format_17g(y_min), format_17g(y_max)).unwrap();
+            write_or_exit(writeln!(out, "y"), sfile);
+            write_or_exit(
+                writeln!(out, "{} {}", format_17g(y_lower), format_17g(y_upper)),
+                sfile,
+            );
+            write_or_exit(
+                writeln!(out, "{} {}", format_17g(y_min), format_17g(y_max)),
+                sfile,
+            );
         }
-        writeln!(out, "x").unwrap();
-        writeln!(out, "{} {}", format_17g(lower), format_17g(upper)).unwrap();
+        write_or_exit(writeln!(out, "x"), sfile);
+        write_or_exit(
+            writeln!(out, "{} {}", format_17g(lower), format_17g(upper)),
+            sfile,
+        );
         for j in 1..=max_index {
             let ju = j as usize;
             if feature_min[ju] != feature_max[ju] {
-                writeln!(
-                    out,
-                    "{} {} {}",
-                    j,
-                    format_17g(feature_min[ju]),
-                    format_17g(feature_max[ju])
-                )
-                .unwrap();
+                write_or_exit(
+                    writeln!(
+                        out,
+                        "{} {} {}",
+                        j,
+                        format_17g(feature_min[ju]),
+                        format_17g(feature_max[ju])
+                    ),
+                    sfile,
+                );
             }
         }
     }
@@ -359,10 +388,10 @@ fn main() {
     // ── Pass 3: scale and output ─────────────────────────────────────
     let mut new_num_nonzeros: usize = 0;
 
-    let f = File::open(data_filename).unwrap();
+    let f = open_file_or_exit(data_filename);
     let reader = BufReader::new(f);
     for line in reader.lines() {
-        let line = line.unwrap();
+        let line = read_line_or_exit(line, data_filename);
         let mut parts = line.split_whitespace();
 
         // Scale target
@@ -437,8 +466,6 @@ fn main() {
         );
     }
 }
-
-use std::io::Write;
 
 fn output_feature(
     index: i32,

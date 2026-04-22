@@ -2,7 +2,7 @@ use libsvm_rs::io::{format_17g, format_g, load_model, load_problem};
 use libsvm_rs::predict::{predict, predict_probability};
 use libsvm_rs::{regression_metrics, svm_check_probability_model, SvmType};
 use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::io::{self, BufWriter, Write};
 use std::path::Path;
 use std::process;
 
@@ -25,6 +25,13 @@ fn parse_flag_arg<'a>(args: &'a [String], i: &mut usize) -> &'a str {
     let value = &args[*i];
     *i += 1;
     value.as_str()
+}
+
+fn write_or_exit(result: io::Result<()>, output_file: &str) {
+    result.unwrap_or_else(|e| {
+        eprintln!("can't write output file {}: {}", output_file, e);
+        process::exit(1);
+    });
 }
 
 fn main() {
@@ -108,7 +115,7 @@ fn main() {
     if predict_prob {
         if matches!(svm_type, SvmType::EpsilonSvr | SvmType::NuSvr) {
             if !quiet {
-                let sigma = model.prob_a[0];
+                let sigma = model.svr_probability().unwrap_or(0.0);
                 eprintln!(
                     "Prob. model for test data: target value = predicted value + z,\n\
                      z: Laplace distribution e^(-|z|/sigma)/(2sigma),sigma={}",
@@ -116,14 +123,14 @@ fn main() {
                 );
             }
         } else if svm_type == SvmType::OneClass {
-            writeln!(out, "labels normal outlier").unwrap();
+            write_or_exit(writeln!(out, "labels normal outlier"), output_file);
         } else {
             // Classification header
-            write!(out, "labels").unwrap();
+            write_or_exit(write!(out, "labels"), output_file);
             for &lab in &model.label {
-                write!(out, " {}", lab).unwrap();
+                write_or_exit(write!(out, " {}", lab), output_file);
             }
-            writeln!(out).unwrap();
+            write_or_exit(writeln!(out), output_file);
         }
     }
 
@@ -135,17 +142,19 @@ fn main() {
 
     for instance in &problem.instances {
         let predict_label = if use_probability_output {
-            let (label, probs) =
-                predict_probability(&model, instance).expect("probability prediction failed");
-            write!(out, "{}", format_g(label)).unwrap();
+            let (label, probs) = predict_probability(&model, instance).unwrap_or_else(|| {
+                eprintln!("probability prediction failed");
+                process::exit(1);
+            });
+            write_or_exit(write!(out, "{}", format_g(label)), output_file);
             for p in &probs {
-                write!(out, " {}", format_g(*p)).unwrap();
+                write_or_exit(write!(out, " {}", format_g(*p)), output_file);
             }
-            writeln!(out).unwrap();
+            write_or_exit(writeln!(out), output_file);
             label
         } else {
             let label = predict(&model, instance);
-            writeln!(out, "{}", format_17g(label)).unwrap();
+            write_or_exit(writeln!(out, "{}", format_17g(label)), output_file);
             label
         };
 

@@ -1,5 +1,7 @@
 # Rust
 /target/
+crates/libsvm/fuzz/target/
+crates/libsvm/fuzz/artifacts/
 
 # Temporary files
 .tmp/

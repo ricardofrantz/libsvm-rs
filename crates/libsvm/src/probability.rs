@@ -378,7 +378,7 @@ pub fn svm_one_class_probability(prob: &SvmProblem, model: &SvmModel) -> Option<
         *dv_slot = dv[0];
     }
 
-    dec_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    dec_values.sort_by(f64::total_cmp);
 
     // Find first index with dec_value >= 0  (= neg_counter in C++)
     let mut neg_counter = 0usize;

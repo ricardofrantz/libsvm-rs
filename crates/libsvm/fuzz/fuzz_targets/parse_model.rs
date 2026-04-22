@@ -1,15 +1,7 @@
 #![no_main]
 use libfuzzer_sys::fuzz_target;
-use std::io::Write;
-use tempfile::NamedTempFile;
+use std::io::Cursor;
 
 fuzz_target!(|data: &[u8]| {
-    let mut temp = match NamedTempFile::new() {
-        Ok(f) => f,
-        Err(_) => return,
-    };
-    if temp.write_all(data).is_err() {
-        return;
-    }
-    let _ = libsvm_rs::io::load_model(temp.path());
+    let _ = libsvm_rs::io::load_model_from_reader(Cursor::new(data));
 });

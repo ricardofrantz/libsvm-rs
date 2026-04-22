@@ -1,7 +1,20 @@
 //! I/O routines for LIBSVM problem and model files.
 //!
-//! File formats match the original LIBSVM exactly, ensuring cross-tool
-//! interoperability.
+//! The file formats match the original LIBSVM text formats for cross-tool
+//! interoperability, but the loaders are written for untrusted input by
+//! default. They enforce [`LoadOptions`] caps, reject embedded NUL bytes,
+//! reject non-ascending feature indices, and return structured [`SvmError`]
+//! values for malformed input within those caps.
+//!
+//! Model loading performs additional structural checks before allocating support
+//! vector storage. Header fields such as `nr_class`, `total_sv`, `rho`, `label`,
+//! `nr_sv`, `probA`, `probB`, and one-class probability-density marks must be
+//! shape-consistent when present. Precomputed-kernel support-vector rows must
+//! begin with `0:sample_serial_number`.
+//!
+//! These checks validate text structure and resource bounds. They do not prove
+//! that a model is statistically meaningful, was trained from a particular
+//! dataset, or is cryptographically authentic.
 
 use std::io::{BufRead, Write};
 use std::path::Path;
@@ -177,6 +190,11 @@ fn str_to_kernel_type(s: &str) -> Option<KernelType> {
 /// Exceeding any cap returns an [`SvmError::ParseError`] (problem files) or
 /// [`SvmError::ModelFormatError`] (model files) with a message identifying
 /// the field that tripped the limit.
+///
+/// The default profile is intended to be panic-free for malformed text input
+/// within these caps. It is still a parser contract, not a semantic model
+/// audit: it does not verify that a loaded model came from a specific training
+/// set or that its predictions are appropriate for a deployment.
 #[derive(Debug, Clone, Copy)]
 pub struct LoadOptions {
     /// Maximum total number of bytes read from the source.
@@ -208,7 +226,8 @@ impl LoadOptions {
     ///
     /// Use **only** for input that is fully trusted. Operating with
     /// unlimited caps removes the first line of defense against malformed
-    /// or adversarial model / problem files.
+    /// or adversarial model / problem files. Module-level hard caps still
+    /// apply to `nr_class` and `total_sv`.
     pub fn trusted_input() -> Self {
         Self {
             max_bytes: u64::MAX,
@@ -319,6 +338,20 @@ fn read_line_capped(
 /// trusted bulk files exceeding the defaults, use
 /// [`load_problem_from_reader_with_options`] with a custom [`LoadOptions`].
 ///
+/// Validates:
+///
+/// - total file size and per-line length,
+/// - embedded NUL byte absence,
+/// - parseable labels and feature values,
+/// - `index:value` token shape,
+/// - ascending feature indices,
+/// - [`LoadOptions::max_feature_index`].
+///
+/// This loader does not validate statistical quality, feature normalization, or
+/// whether labels are appropriate for a particular SVM formulation. Malformed
+/// text input within the configured caps is returned as [`SvmError`] rather
+/// than panicking.
+///
 /// ### Complexity
 ///
 /// Linear in file size for parsing and `O(n · d)` memory where `n` is the
@@ -332,15 +365,17 @@ pub fn load_problem(path: &Path) -> Result<SvmProblem, SvmError> {
 
 /// Load an SVM problem from any buffered reader.
 ///
-/// Uses [`LoadOptions::default`].
+/// Uses [`LoadOptions::default`]. See [`load_problem`] for the validation
+/// contract and non-goals.
 pub fn load_problem_from_reader(reader: impl BufRead) -> Result<SvmProblem, SvmError> {
     load_problem_from_reader_with_options(reader, &LoadOptions::default())
 }
 
 /// Load an SVM problem from any buffered reader, with explicit resource caps.
 ///
-/// See [`LoadOptions`] for the meaning of each cap and for defaults tuned
-/// for untrusted input.
+/// See [`LoadOptions`] for the meaning of each cap and for defaults tuned for
+/// untrusted input. This function has the same validation contract as
+/// [`load_problem`], with caller-supplied caps.
 pub fn load_problem_from_reader_with_options(
     mut reader: impl BufRead,
     options: &LoadOptions,
@@ -531,6 +566,27 @@ pub fn save_model_to_writer(mut w: impl Write, model: &SvmModel) -> Result<(), S
 ///
 /// Uses [`LoadOptions::default`] — appropriate for untrusted input.
 ///
+/// Validates:
+///
+/// - total file size and per-line length,
+/// - embedded NUL byte absence,
+/// - known `svm_type` and `kernel_type` values,
+/// - `nr_class` and `total_sv` caps,
+/// - `nr_class >= 2`,
+/// - `rho` length for classification, one-class, and regression models,
+/// - `label` and `nr_sv` length when present,
+/// - `sum(nr_sv) == total_sv` when `nr_sv` is present,
+/// - `probA` / `probB` decision-function counts when present,
+/// - one-class-only `prob_density_marks`,
+/// - support-vector feature token shape, ascending feature indices, and
+///   [`LoadOptions::max_feature_index`],
+/// - precomputed-kernel support-vector rows starting with
+///   `0:sample_serial_number`.
+///
+/// This loader does not prove model provenance, semantic correctness relative
+/// to a training set, or suitability for a deployment. Malformed text input
+/// within the configured caps is returned as [`SvmError`] rather than panicking.
+///
 /// ### Complexity
 ///
 /// The header parse is `O(nr_class)` in the worst case (due to `rho` /
@@ -546,15 +602,17 @@ pub fn load_model(path: &Path) -> Result<SvmModel, SvmError> {
 
 /// Load an SVM model from any buffered reader.
 ///
-/// Uses [`LoadOptions::default`].
+/// Uses [`LoadOptions::default`]. See [`load_model`] for the validation
+/// contract and non-goals.
 pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError> {
     load_model_from_reader_with_options(reader, &LoadOptions::default())
 }
 
 /// Load an SVM model from any buffered reader, with explicit resource caps.
 ///
-/// See [`LoadOptions`] for the meaning of each cap and for defaults tuned
-/// for untrusted input.
+/// See [`LoadOptions`] for the meaning of each cap and for defaults tuned for
+/// untrusted input. This function has the same validation contract as
+/// [`load_model`], with caller-supplied caps.
 pub fn load_model_from_reader_with_options(
     mut reader: impl BufRead,
     options: &LoadOptions,
@@ -598,9 +656,9 @@ pub fn load_model_from_reader_with_options(
         }
 
         let mut parts = line.split_whitespace();
-        // `split_whitespace` on a non-empty trimmed string always yields at
-        // least one token — this `expect` guards the invariant at runtime.
-        let cmd = parts.next().expect("non-empty line has at least one token");
+        let cmd = parts.next().ok_or_else(|| {
+            SvmError::ModelFormatError(format!("line {}: empty model header line", line_num))
+        })?;
 
         match cmd {
             "svm_type" => {
@@ -780,6 +838,10 @@ pub fn load_model_from_reader_with_options(
             prev_index = index;
             nodes.push(SvmNode { index, value });
         }
+
+        if param.kernel_type == KernelType::Precomputed {
+            validate_precomputed_row(&nodes, line_num, "support vector")?;
+        }
         sv.push(nodes);
     }
 
@@ -796,6 +858,32 @@ pub fn load_model_from_reader_with_options(
         label,
         n_sv,
     })
+}
+
+fn validate_precomputed_row(
+    nodes: &[SvmNode],
+    line_num: usize,
+    context: &str,
+) -> Result<(), SvmError> {
+    let first = nodes.first().ok_or_else(|| {
+        SvmError::ModelFormatError(format!(
+            "line {}: precomputed kernel {} is missing 0:sample_serial_number",
+            line_num, context
+        ))
+    })?;
+
+    if first.index != 0
+        || !first.value.is_finite()
+        || first.value < 1.0
+        || first.value.fract() != 0.0
+    {
+        return Err(SvmError::ModelFormatError(format!(
+            "line {}: precomputed kernel {} must start with 0:sample_serial_number",
+            line_num, context
+        )));
+    }
+
+    Ok(())
 }
 
 // ─── Cross-consistency validation ────────────────────────────────────
@@ -1502,6 +1590,23 @@ SV\n\
         let err = load_model_from_reader(&input[..]).unwrap_err();
         assert!(
             format!("{}", err).contains("feature indices must be ascending"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn reject_precomputed_model_sv_without_sample_serial_number() {
+        let input = b"svm_type c_svc\n\
+kernel_type precomputed\n\
+nr_class 2\n\
+total_sv 1\n\
+rho 0\n\
+SV\n\
+0.1\n";
+        let err = load_model_from_reader(&input[..]).unwrap_err();
+        assert!(
+            format!("{}", err).contains("missing 0:sample_serial_number"),
             "unexpected error: {}",
             err
         );

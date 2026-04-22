@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `LoadOptions` and explicit `load_*_from_reader_with_options` entrypoints for
+  bounded problem/model loading.
+- Fuzz corpus seeds and property tests for parser and model serialization
+  stability.
+- Supply-chain policy checks with `cargo-deny` and a pinned release
+  reproduction guide.
+
+### Changed
+
+- Default problem/model loaders now treat input as untrusted and apply byte,
+  line-length, support-vector, class-count, and feature-index caps.
+- Root Rust toolchain is pinned to `1.93.1`; MSRV remains `1.75.0`.
+
+### Security
+
+- Hardened model parsing against header-driven allocation and inconsistent
+  model metadata before support-vector storage is allocated.
+- Model files now validate `rho`, `label`, `nr_sv`, probability metadata,
+  precomputed-kernel rows, and support-vector feature ordering.
+- Problem and model loaders reject over-limit input, oversized lines, embedded
+  NUL bytes, malformed `index:value` tokens, non-ascending feature indices, and
+  over-limit feature indices.
+- Production library code now denies `unwrap`, `expect`, `panic!`, and
+  `unreachable!` outside tests.
+- No breaking API changes are expected; `LoadOptions` is additive and existing
+  loader entrypoints delegate to `LoadOptions::default()`.
+
 ## [0.7.0] - 2026-02-12
 
 ### Added

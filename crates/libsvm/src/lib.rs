@@ -13,9 +13,28 @@
 //! for inference, and [`predict::predict_probability`] for probabilistic
 //! outputs.
 //!
+//! ## Trust Boundary
+//!
+//! Problem and model files are treated as untrusted text input by default.
+//! The [`io`] loaders apply [`LoadOptions`] caps, reject malformed sparse
+//! feature rows, and validate model-header consistency before allocating
+//! support-vector storage. These checks bound parsing work and memory use; they
+//! do not authenticate a model or prove that it is appropriate for a particular
+//! deployment.
+//!
 //! ## Feature Flags
 //!
 //! - `rayon` — Enable parallel cross-validation (off by default).
+
+#![cfg_attr(
+    not(test),
+    deny(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::panic,
+        clippy::unreachable
+    )
+)]
 
 use std::sync::atomic::{AtomicBool, Ordering};
 

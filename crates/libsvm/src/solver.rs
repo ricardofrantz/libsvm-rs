@@ -389,7 +389,7 @@ impl<'a> Solver<'a> {
             return None;
         }
 
-        Some((i, gmin_idx.unwrap()))
+        Some((i, gmin_idx?))
     }
 
     fn select_working_set_nu(&mut self) -> Option<(usize, usize)> {
@@ -476,7 +476,7 @@ impl<'a> Solver<'a> {
             return None;
         }
 
-        let out_j = gmin_idx.unwrap();
+        let out_j = gmin_idx?;
         let out_i = if self.y[out_j] == 1 {
             gmaxp_idx?
         } else {

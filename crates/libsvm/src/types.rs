@@ -1,3 +1,12 @@
+//! Core LIBSVM-compatible data structures.
+//!
+//! These types intentionally mirror LIBSVM concepts: sparse nodes, problem
+//! rows, solver parameters, and trained model fields. Values produced by
+//! [`crate::io::load_problem`] and [`crate::io::load_model`] have passed the
+//! loader's text-format and resource-bound checks. Values constructed manually
+//! by a caller are not automatically checked; call [`check_parameter`] before
+//! training, and prefer the loader APIs for external model/problem files.
+
 /// Type of SVM formulation.
 ///
 /// Matches the integer constants in the original LIBSVM (`svm.h`):
@@ -51,6 +60,11 @@ pub struct SvmNode {
 }
 
 /// A training/test problem: a collection of labelled sparse instances.
+///
+/// `load_problem` validates that sparse feature indices are ascending and
+/// within the configured [`crate::io::LoadOptions`] bounds. When constructing a
+/// problem manually, keep `labels.len() == instances.len()` and use ascending
+/// feature indices to match LIBSVM input assumptions.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SvmProblem {
     /// Label (class for classification, target for regression) per instance.
@@ -185,6 +199,44 @@ pub fn check_parameter(
     // Run the data-independent checks first
     param.validate()?;
 
+    if problem.labels.len() != problem.instances.len() {
+        return Err(SvmError::InvalidParameter(format!(
+            "labels length ({}) does not match instance length ({})",
+            problem.labels.len(),
+            problem.instances.len()
+        )));
+    }
+
+    if problem.labels.is_empty() {
+        return Err(SvmError::InvalidParameter(
+            "problem has no instances".into(),
+        ));
+    }
+
+    if param.kernel_type == KernelType::Precomputed {
+        let upper = problem.instances.len() as f64;
+        for (row, instance) in problem.instances.iter().enumerate() {
+            let first = instance.first().ok_or_else(|| {
+                SvmError::InvalidParameter(format!(
+                    "precomputed kernel row {} is missing 0:sample_serial_number",
+                    row + 1
+                ))
+            })?;
+            if first.index != 0
+                || !first.value.is_finite()
+                || first.value < 1.0
+                || first.value > upper
+                || first.value.fract() != 0.0
+            {
+                return Err(SvmError::InvalidParameter(format!(
+                    "precomputed kernel row {} must start with 0:sample_serial_number in [1, {}]",
+                    row + 1,
+                    problem.instances.len()
+                )));
+            }
+        }
+    }
+
     // ν-SVC feasibility: for every pair of classes (i, j),
     // nu * (count_i + count_j) / 2 must be <= min(count_i, count_j)
     //
@@ -219,6 +271,13 @@ pub fn check_parameter(
 /// A trained SVM model.
 ///
 /// Produced by training, or loaded from a LIBSVM model file.
+///
+/// `load_model` validates model-file shape contracts before returning this
+/// type: class counts, support-vector counts, decision-function arrays, optional
+/// probability metadata, and sparse support-vector rows must be internally
+/// consistent. Manually constructed values bypass those checks, so callers that
+/// accept external model text should prefer [`crate::io::load_model`] or
+/// [`crate::io::load_model_from_reader`].
 #[derive(Debug, Clone, PartialEq)]
 pub struct SvmModel {
     /// Parameters used during training.
@@ -407,6 +466,46 @@ mod tests {
             ..Default::default()
         };
         assert!(p.validate().is_err());
+    }
+
+    #[test]
+    fn check_parameter_rejects_empty_problem() {
+        let problem = SvmProblem {
+            labels: Vec::new(),
+            instances: Vec::new(),
+        };
+        let err = check_parameter(&problem, &SvmParameter::default()).unwrap_err();
+        assert!(format!("{}", err).contains("problem has no instances"));
+    }
+
+    #[test]
+    fn check_parameter_rejects_label_instance_length_mismatch() {
+        let problem = SvmProblem {
+            labels: vec![1.0],
+            instances: Vec::new(),
+        };
+        let err = check_parameter(&problem, &SvmParameter::default()).unwrap_err();
+        assert!(format!("{}", err).contains("does not match instance length"));
+    }
+
+    #[test]
+    fn check_parameter_rejects_precomputed_rows_without_sample_serial_number() {
+        let problem = SvmProblem {
+            labels: vec![1.0, -1.0],
+            instances: vec![
+                vec![],
+                vec![SvmNode {
+                    index: 0,
+                    value: 2.0,
+                }],
+            ],
+        };
+        let param = SvmParameter {
+            kernel_type: KernelType::Precomputed,
+            ..Default::default()
+        };
+        let err = check_parameter(&problem, &param).unwrap_err();
+        assert!(format!("{}", err).contains("missing 0:sample_serial_number"));
     }
 
     #[test]

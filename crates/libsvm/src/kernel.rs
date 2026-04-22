@@ -100,8 +100,9 @@ pub fn k_function(x: &[SvmNode], y: &[SvmNode], param: &SvmParameter) -> f64 {
         KernelType::Precomputed => {
             // For precomputed kernels, x[y[0].value as index] gives the value.
             // y[0].value is the column index (1-based SV index).
-            let col = y[0].value as usize;
-            x.get(col).map_or(0.0, |n| n.value)
+            y.first()
+                .and_then(|node| x.get(node.value as usize))
+                .map_or(0.0, |n| n.value)
         }
     }
 }
@@ -157,15 +158,18 @@ impl<'a> Kernel<'a> {
             ),
             KernelType::Rbf => {
                 // Use precomputed x_square: ‖x_i - x_j‖² = x_sq[i] + x_sq[j] - 2*dot(x_i, x_j)
-                let sq = self.x_square.as_ref().unwrap();
-                let val = sq[i] + sq[j] - 2.0 * dot(self.x[i], self.x[j]);
+                let val = if let Some(sq) = &self.x_square {
+                    sq[i] + sq[j] - 2.0 * dot(self.x[i], self.x[j])
+                } else {
+                    sparse_sq_dist(self.x[i], self.x[j])
+                };
                 (-self.gamma * val).exp()
             }
             KernelType::Sigmoid => (self.gamma * dot(self.x[i], self.x[j]) + self.coef0).tanh(),
-            KernelType::Precomputed => {
-                let col = self.x[j][0].value as usize;
-                self.x[i].get(col).map_or(0.0, |n| n.value)
-            }
+            KernelType::Precomputed => self.x[j]
+                .first()
+                .and_then(|node| self.x[i].get(node.value as usize))
+                .map_or(0.0, |n| n.value),
         }
     }
 
@@ -340,5 +344,16 @@ mod tests {
         };
         // K(x, x) = exp(-γ * 0) = 1
         assert!((k_function(&x, &x, &param) - 1.0).abs() < 1e-15);
+    }
+
+    #[test]
+    fn precomputed_kernel_missing_sample_serial_number_returns_zero() {
+        let x = make_nodes(&[(0, 1.0), (1, 2.0)]);
+        let y = Vec::new();
+        let param = SvmParameter {
+            kernel_type: KernelType::Precomputed,
+            ..Default::default()
+        };
+        assert_eq!(k_function(&x, &y, &param), 0.0);
     }
 }

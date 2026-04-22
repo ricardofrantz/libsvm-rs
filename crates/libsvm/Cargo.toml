@@ -1,6 +1,6 @@
 [package]
 name = "libsvm-rs"
-description = "Pure Rust reimplementation of LIBSVM — SVM training and prediction"
+description = "FFI-free Rust implementation of LIBSVM-compatible SVM training and prediction"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -27,6 +27,7 @@ optional = true
 [dev-dependencies]
 float-cmp = { workspace = true }
 criterion = { version = "0.5", features = ["html_reports"] }
+proptest = { workspace = true }
 
 [[bench]]
 name = "svm_bench"

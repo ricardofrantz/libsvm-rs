@@ -142,7 +142,8 @@ impl Cache {
         self.lru_insert(index);
 
         let start = old_len;
-        (self.data[index].as_mut().unwrap().as_mut_slice(), start)
+        let data = self.data[index].get_or_insert_with(Vec::new);
+        (data.as_mut_slice(), start)
     }
 
     /// Swap indices `i` and `j` in the cache.

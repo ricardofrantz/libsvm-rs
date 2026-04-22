@@ -6,10 +6,13 @@
 //! - Cross-validation: outputs are finite and valid labels
 
 use libsvm_rs::cross_validation::svm_cross_validation;
-use libsvm_rs::io::load_problem;
+use libsvm_rs::io::{
+    load_model_from_reader, load_problem, load_problem_from_reader, save_model_to_writer,
+};
 use libsvm_rs::predict::predict;
 use libsvm_rs::train::svm_train;
-use libsvm_rs::types::{SvmNode, SvmParameter, SvmProblem};
+use libsvm_rs::types::{KernelType, SvmModel, SvmNode, SvmParameter, SvmProblem, SvmType};
+use proptest::prelude::*;
 use std::path::Path;
 
 /// Helper to load heart_scale dataset from the project data directory.
@@ -24,6 +27,75 @@ fn unique_labels(prob: &SvmProblem) -> Vec<f64> {
     labels.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     labels.dedup();
     labels
+}
+
+fn finite_value_strategy() -> impl Strategy<Value = f64> {
+    -1000.0f64..1000.0
+}
+
+fn sparse_instance_strategy() -> impl Strategy<Value = Vec<SvmNode>> {
+    prop::collection::vec((1i32..64, finite_value_strategy()), 0..12).prop_map(|mut pairs| {
+        pairs.sort_by_key(|(index, _)| *index);
+        pairs.dedup_by_key(|(index, _)| *index);
+        pairs
+            .into_iter()
+            .map(|(index, value)| SvmNode { index, value })
+            .collect()
+    })
+}
+
+fn problem_strategy() -> impl Strategy<Value = SvmProblem> {
+    (1usize..16).prop_flat_map(|len| {
+        (
+            prop::collection::vec(finite_value_strategy(), len),
+            prop::collection::vec(sparse_instance_strategy(), len),
+        )
+            .prop_map(|(labels, instances)| SvmProblem { labels, instances })
+    })
+}
+
+fn binary_model_strategy() -> impl Strategy<Value = SvmModel> {
+    (1usize..12).prop_flat_map(|total_sv| {
+        (
+            0usize..=total_sv,
+            prop::collection::vec(sparse_instance_strategy(), total_sv),
+            prop::collection::vec(finite_value_strategy(), total_sv),
+            finite_value_strategy(),
+        )
+            .prop_map(move |(split, sv, coef, rho)| SvmModel {
+                param: SvmParameter {
+                    svm_type: SvmType::CSvc,
+                    kernel_type: KernelType::Linear,
+                    gamma: 0.0,
+                    ..Default::default()
+                },
+                nr_class: 2,
+                sv,
+                sv_coef: vec![coef],
+                rho: vec![rho],
+                prob_a: Vec::new(),
+                prob_b: Vec::new(),
+                prob_density_marks: Vec::new(),
+                sv_indices: (1..=total_sv).collect(),
+                label: vec![1, -1],
+                n_sv: vec![split, total_sv - split],
+            })
+    })
+}
+
+fn problem_to_text(prob: &SvmProblem) -> String {
+    let mut out = String::new();
+    for (label, instance) in prob.labels.iter().zip(prob.instances.iter()) {
+        out.push_str(&label.to_string());
+        for node in instance {
+            out.push(' ');
+            out.push_str(&node.index.to_string());
+            out.push(':');
+            out.push_str(&node.value.to_string());
+        }
+        out.push('\n');
+    }
+    out
 }
 
 /// Test: Deterministic predictions with randomized sparse instances.
@@ -225,5 +297,43 @@ fn cross_validation_results_valid() {
             target,
             valid_labels
         );
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(96))]
+
+    #[test]
+    fn problem_loader_roundtrip_stability(prob in problem_strategy()) {
+        let text = problem_to_text(&prob);
+        let loaded = load_problem_from_reader(text.as_bytes())
+            .expect("generated problem should parse");
+        let loaded_again = load_problem_from_reader(text.as_bytes())
+            .expect("generated problem should parse repeatedly");
+
+        prop_assert_eq!(&loaded, &prob);
+        prop_assert_eq!(&loaded_again, &loaded);
+    }
+
+    #[test]
+    fn model_save_load_save_is_byte_stable(model in binary_model_strategy()) {
+        let mut first = Vec::new();
+        save_model_to_writer(&mut first, &model)
+            .expect("generated model should serialize");
+
+        let loaded = load_model_from_reader(first.as_slice())
+            .expect("serialized model should parse");
+
+        let mut second = Vec::new();
+        save_model_to_writer(&mut second, &loaded)
+            .expect("loaded model should serialize");
+
+        prop_assert_eq!(first, second);
+        prop_assert_eq!(loaded.param.svm_type, SvmType::CSvc);
+        prop_assert_eq!(loaded.param.kernel_type, KernelType::Linear);
+        prop_assert_eq!(loaded.nr_class, 2);
+        prop_assert_eq!(loaded.sv.len(), model.sv.len());
+        prop_assert_eq!(loaded.sv_coef.len(), 1);
+        prop_assert_eq!(loaded.n_sv.iter().sum::<usize>(), loaded.sv.len());
     }
 }
