@@ -40,6 +40,11 @@ jobs:
           # fails on Windows with `error: target was empty`.
           components: rustfmt, clippy
       - name: Build release binaries
+        # `shell: bash` is required on Windows runners so that `"$TARGET"`
+        # expands as an env var (git-bash). PowerShell would treat `$TARGET`
+        # as an undefined PS variable and pass an empty --target argument
+        # to cargo, producing `error: target was empty`.
+        shell: bash
         env:
           TARGET: ${{ matrix.target }}
         run: cargo build --release --locked --target "$TARGET"
