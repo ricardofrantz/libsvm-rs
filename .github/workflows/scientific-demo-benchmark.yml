@@ -25,7 +25,7 @@ on:
         type: boolean
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
@@ -38,16 +38,16 @@ jobs:
   benchmark:
     name: Scientific Demo Benchmark
     runs-on: ${{ inputs.strict_env && 'self-hosted' || 'ubuntu-latest' }}
-    # `permissions` cannot use ${{ }} expressions, so it must be static. The
-    # actual write (the commit-back step) is gated by `if: inputs.auto_commit`
-    # and `persist-credentials: inputs.auto_commit`, so read-only runs never push.
+    # Read-only: this job runs benchmarks and uploads artifacts. The write
+    # (commit-back) lives in the separate `commit` job below, so the benchmark
+    # job never holds a write-scoped token. (`permissions` cannot use ${{ }}
+    # expressions, so least privilege is enforced by splitting the jobs.)
     permissions:
-      contents: write
+      contents: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
-          fetch-depth: 0
-          persist-credentials: ${{ inputs.auto_commit }}
+          persist-credentials: false
 
       - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable
       - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4  # v2.9.1
@@ -149,8 +149,24 @@ jobs:
             examples/comparison.png
             examples/comparison_summary.json
 
-      - name: Auto-commit benchmark artifacts
-        if: ${{ inputs.auto_commit }}
+  commit:
+    name: Commit benchmark artifacts
+    needs: benchmark
+    if: ${{ inputs.auto_commit }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: scientific-demo-benchmark
+
+      - name: Commit benchmark artifacts
         run: |
           set -euo pipefail
           if [[ "${GITHUB_REF_TYPE}" != "branch" ]]; then
