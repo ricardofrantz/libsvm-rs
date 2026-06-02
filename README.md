@@ -1,18 +1,14 @@
 # libsvm-rs
 
-**FFI-free, Rust-native LIBSVM-compatible SVM training and prediction.**
+A pure-Rust implementation of [LIBSVM](https://github.com/cjlin1/libsvm), for
+when you want LIBSVM's model and data formats without linking the C/C++ library.
+It covers the same SVM types, kernels, sparse text format, model files, and
+command-line tools as upstream.
 
-`libsvm-rs` is a pure Rust implementation of
-[LIBSVM](https://github.com/cjlin1/libsvm) for projects that want LIBSVM
-model/data compatibility without linking to the C/C++ library. It supports the
-same SVM families, kernels, sparse text format, model files, and command-line
-workflow as upstream LIBSVM, while keeping the implementation auditable from
-Rust.
-
-The goal is numerical equivalence and operational compatibility, not bitwise
-identity. The included verification pipeline compares this implementation
-against a pinned upstream LIBSVM reference across classification, regression,
-one-class, probability, and precomputed-kernel cases.
+The aim is numerical equivalence, not bitwise identity. A verification pipeline
+checks this implementation against a pinned upstream LIBSVM build across
+classification, regression, one-class, probability, and precomputed-kernel
+cases.
 
 [![Crates.io](https://img.shields.io/crates/v/libsvm-rs.svg)](https://crates.io/crates/libsvm-rs)
 [![Documentation](https://docs.rs/libsvm-rs/badge.svg)](https://docs.rs/libsvm-rs)
@@ -20,45 +16,41 @@ one-class, probability, and precomputed-kernel cases.
 [![MSRV](https://img.shields.io/badge/MSRV-1.75-blue.svg)](Cargo.toml)
 [![License](https://img.shields.io/badge/license-BSD--3-blue.svg)](LICENSE)
 
-## Why libsvm-rs?
+## What you get
 
-| If you need... | `libsvm-rs` gives you... |
-|---|---|
-| Rust-native deployment | No C runtime or `libsvm-sys2` FFI dependency |
-| LIBSVM interoperability | Reads and writes LIBSVM sparse problem files and model files |
-| Familiar command-line tools | `svm-train-rs`, `svm-predict-rs`, and `svm-scale-rs` |
-| Auditable implementation | Solver, kernels, prediction, probability, and I/O are implemented in Rust |
-| Parity evidence | Reproducible differential tests against pinned upstream LIBSVM |
-| Small dependency surface | One runtime dependency: `thiserror` |
+- No C runtime or `libsvm-sys2` FFI dependency
+- Reads and writes LIBSVM sparse problem files and model files
+- The familiar command-line tools: `svm-train-rs`, `svm-predict-rs`, `svm-scale-rs`
+- Solver, kernels, prediction, probability, and I/O all in plain Rust, so you can
+  read and test them without crossing an FFI boundary
+- One runtime dependency (`thiserror`)
+- Reproducible differential tests against a pinned upstream LIBSVM build
 
-## How is this different from the `libsvm` crate?
+## How this differs from the `libsvm` crate
 
-The existing [`libsvm`](https://docs.rs/libsvm/latest/libsvm/) crate provides
-high-level Rust bindings to the C LIBSVM library through `libsvm-sys2`.
-That is the right choice if you explicitly want the original C implementation
-from Rust.
+The [`libsvm`](https://docs.rs/libsvm/latest/libsvm/) crate gives you high-level
+Rust bindings to the C LIBSVM library through `libsvm-sys2`. Reach for that if
+you specifically want the original C implementation.
 
-`libsvm-rs` is different: it reimplements the LIBSVM algorithms and file formats
-in Rust. Use it when you want Rust-native deployment, easier cross-compilation,
-or an implementation that can be inspected and tested without crossing an FFI
-boundary.
+This crate instead reimplements the LIBSVM algorithms and file formats in Rust.
+Reach for it when you want Rust-native deployment, easier cross-compilation, or
+code you can inspect and test without an FFI boundary.
 
-## Performance Snapshot
+## Performance
 
-Native CLI benchmarks compare Rust binaries (`svm-*-rs`) against the vendored C
-LIBSVM reference on the same datasets and parameters. Ratios below `1.0` mean
+Native CLI benchmarks compare the Rust binaries (`svm-*-rs`) against the vendored
+C LIBSVM reference on the same datasets and parameters. A ratio below `1.0` means
 Rust was faster in the measured run.
 
-| Operation | Cases | Rust/C median ratio | Result |
-|---|---:|---:|---|
-| `predict` | 40 | `0.804` | Rust faster on median |
-| `predict_probability` | 30 | `0.834` | Rust faster on median |
-| `train` | 40 | `0.916` | Rust slightly faster on median |
-| `train_probability` | 30 | `1.025` | Rust slightly slower on median |
+| Operation | Cases | Rust/C median ratio |
+|---|---:|---:|
+| `predict` | 40 | `0.804` |
+| `predict_probability` | 30 | `0.834` |
+| `train` | 40 | `0.916` |
+| `train_probability` | 30 | `1.025` |
 
-Rust is not uniformly faster than C LIBSVM. The included native benchmarks show
-strong prediction performance and comparable training performance, with some
-slower probability-training cases. See
+Rust is not uniformly faster than C. Prediction comes out ahead, training is
+roughly even, and probability training is sometimes slower. See
 [`reference/benchmark_report.md`](reference/benchmark_report.md) and
 [`examples/comparison_summary.json`](examples/comparison_summary.json).
 
@@ -123,13 +115,10 @@ controlled.
 
 - **All 5 SVM types**: C-SVC, nu-SVC, one-class SVM, epsilon-SVR, nu-SVR (`-s 0..4`)
 - **All 5 kernel types**: linear, polynomial, RBF, sigmoid, precomputed (`-t 0..4`)
-- **Model file compatibility**: reads and writes LIBSVM text format with `%.17g` precision, so models trained with the C library can be loaded in Rust and vice versa
-- **Probability estimation** (`-b 1`): Platt scaling for binary classification, pairwise coupling for multiclass, Laplace-corrected predictions for regression, density-based marks for one-class
-- **Cross-validation**: stratified k-fold for classification (preserves class proportions), simple k-fold for regression/one-class
-- **CLI tools**: `svm-train-rs`, `svm-predict-rs`, `svm-scale-rs` — drop-in replacements matching upstream flag syntax
-- **FFI-free implementation**: no C runtime dependency and no `libsvm-sys2` wrapper layer
-- **Minimal dependencies**: one runtime dependency (`thiserror`); `rayon` is feature-gated for future parallel cross-validation
-- **Verification pipeline**: upstream parity locked to LIBSVM v337 with 250-configuration differential testing across all SVM types, kernel types, datasets, and parameter variations
+- **Model file compatibility**: reads and writes LIBSVM text format at `%.17g` precision, so a model trained with the C library loads in Rust and vice versa
+- **Probability estimation** (`-b 1`): Platt scaling for binary classification, pairwise coupling for multiclass, Laplace-corrected regression, density marks for one-class
+- **Cross-validation**: stratified k-fold for classification (preserves class proportions), simple k-fold for regression and one-class
+- **CLI tools**: `svm-train-rs`, `svm-predict-rs`, `svm-scale-rs`, matching upstream flag syntax
 
 ## Installation
 
@@ -334,7 +323,7 @@ BENCH_WARMUP=3 BENCH_RUNS=30 python3 scripts/benchmark_compare.py
 | `fail`  | Deterministic parity break — label mismatch or model divergence outside thresholds |
 | `skip`  | Configuration not executed (usually because training fails in both implementations) |
 
-**Current status** (full scope, 250 configs): **236 pass, 4 warn, 0 fail, 10 skip**.
+Current status (full scope, 250 configs): 236 pass, 4 warn, 0 fail, 10 skip.
 
 The 4 warnings are:
 1. `housing_scale_s3_t2_tuned` — epsilon-SVR near-parity training drift (bounded, cross-predict verified)
@@ -389,7 +378,11 @@ python3 examples/common/make_comparison_figure.py --root . --out examples/compar
 
 ### Parity Claim
 
-No hard differential failures under the documented default policy, with a small set of explicitly justified warnings. This is strong parity evidence, but **not** bitwise identity across all modes. Residual drift comes from training-side numerics (floating-point accumulation order, shrinking heuristic timing), not from prediction logic.
+No hard differential failures under the default policy, with a small set of
+documented, justified warnings — good parity evidence, though not bitwise
+identity across all modes. The residual drift comes from training-side numerics
+(floating-point accumulation order, shrinking-heuristic timing), not from
+prediction logic.
 
 ---
 
