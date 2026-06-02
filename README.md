@@ -797,7 +797,16 @@ Coverage metrics: 93.19% line coverage, 92.86% function coverage (library crate)
 
 ## License
 
-BSD-3-Clause, same family as original LIBSVM. See [LICENSE](LICENSE).
+`libsvm-rs` is licensed under **BSD-3-Clause**, the same license as upstream
+LIBSVM. It is a Rust port and reimplementation of
+[LIBSVM](https://github.com/cjlin1/libsvm) by Chih-Chung Chang and Chih-Jen Lin;
+the original algorithm and copyright belong to them, and that copyright is
+retained alongside the Rust port's. The original LIBSVM source is redistributed
+verbatim under `vendor/libsvm/` with its own license at
+[`vendor/libsvm/COPYRIGHT`](vendor/libsvm/COPYRIGHT).
+
+See [LICENSE](LICENSE) for terms and [NOTICE](NOTICE) for provenance and
+attribution.
 
 ## References
 
