@@ -116,6 +116,10 @@ fn main() {
         i += 1;
         let value = parse_flag_arg(&args, &mut i);
 
+        if flag.len() < 2 {
+            eprintln!("unknown option");
+            exit_with_help();
+        }
         match flag.as_bytes()[1] {
             b'l' => {
                 lower = value.parse().unwrap_or_else(|_| exit_with_help());

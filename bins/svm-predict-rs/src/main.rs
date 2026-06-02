@@ -56,6 +56,10 @@ fn main() {
         i += 1;
         let value = parse_flag_arg(&args, &mut i);
 
+        if flag.len() < 2 {
+            eprintln!("Unknown option: {}", flag);
+            exit_with_help();
+        }
         match flag.as_bytes()[1] {
             b'b' => {
                 predict_prob = value.parse::<i32>().unwrap_or(0) != 0;

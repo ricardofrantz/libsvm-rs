@@ -178,7 +178,7 @@ fn rejects_nul_byte_in_problem_line() {
 fn rejects_nul_byte_in_model_sv_section() {
     // Same vector, SV-section side — covers both parsers.
     let mut payload: Vec<u8> =
-        b"svm_type c_svc\nkernel_type linear\nnr_class 2\ntotal_sv 1\nrho 0\nSV\n0.1 1:0.5"
+        b"svm_type c_svc\nkernel_type linear\nnr_class 2\ntotal_sv 1\nrho 0\nlabel 1 -1\nnr_sv 1 0\nSV\n0.1 1:0.5"
             .to_vec();
     payload.push(0);
     payload.push(b'\n');

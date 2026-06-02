@@ -178,6 +178,21 @@ fn probability_flag_without_value_prints_help() {
 }
 
 #[test]
+fn bare_dash_prints_help_and_does_not_panic() {
+    // A lone "-" has no flag letter; must not panic (was: as_bytes()[1] OOB).
+    let output = Command::new(bin_path())
+        .arg("-")
+        .arg("a")
+        .arg("b")
+        .arg("c")
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("Usage: svm-predict"), "expected usage, got: {stdout}");
+}
+
+#[test]
 fn random_flag_chunk_permutations_preserve_quiet_behavior() {
     let dir = unique_tmp_dir("svm-predict-fuzz");
     let mut state = 0x5A5A_5A5A_DEAD_BEEFu64;

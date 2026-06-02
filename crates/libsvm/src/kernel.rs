@@ -100,6 +100,13 @@ pub fn k_function(x: &[SvmNode], y: &[SvmNode], param: &SvmParameter) -> f64 {
         KernelType::Precomputed => {
             // For precomputed kernels, x[y[0].value as index] gives the value.
             // y[0].value is the column index (1-based SV index).
+            //
+            // Safety note: `node.value as usize` is a float→usize cast that saturates
+            // on out-of-range values (negative or > usize::MAX) — this matches upstream
+            // C++ behaviour. `.get()` then maps any out-of-range index to None, and
+            // `.map_or(0.0, ...)` returns 0.0 in that case (silent mis-map, no panic).
+            // Intentional: check_parameter validates the precomputed kernel at train time;
+            // at predict time the model loader validates the 0:serial_number row header.
             y.first()
                 .and_then(|node| x.get(node.value as usize))
                 .map_or(0.0, |n| n.value)
@@ -166,6 +173,9 @@ impl<'a> Kernel<'a> {
                 (-self.gamma * val).exp()
             }
             KernelType::Sigmoid => (self.gamma * dot(self.x[i], self.x[j]) + self.coef0).tanh(),
+            // See the free-function kernel_function above for the safety note on the
+            // float→usize cast: saturates on out-of-range values, .get() maps to None,
+            // .map_or returns 0.0 (intentional, matches upstream; silent mis-map, no panic).
             KernelType::Precomputed => self.x[j]
                 .first()
                 .and_then(|node| self.x[i].get(node.value as usize))

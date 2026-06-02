@@ -88,6 +88,9 @@ fn main() {
                 exit_with_help();
             });
             param.weight.push((label, weight));
+        } else if flag.len() < 2 {
+            eprintln!("Unknown option: {}", flag);
+            exit_with_help();
         } else {
             match flag.as_bytes()[1] {
                 b's' => {

@@ -631,12 +631,12 @@ pub fn load_model_from_reader_with_options(
     let mut param = SvmParameter::default();
     let mut nr_class: usize = 0;
     let mut total_sv: usize = 0;
-    let mut rho = Vec::new();
-    let mut label = Vec::new();
-    let mut prob_a = Vec::new();
-    let mut prob_b = Vec::new();
-    let mut prob_density_marks = Vec::new();
-    let mut n_sv = Vec::new();
+    let mut rho: Vec<f64> = Vec::new();
+    let mut label: Vec<i32> = Vec::new();
+    let mut prob_a: Vec<f64> = Vec::new();
+    let mut prob_b: Vec<f64> = Vec::new();
+    let mut prob_density_marks: Vec<f64> = Vec::new();
+    let mut n_sv: Vec<usize> = Vec::new();
 
     // Read header.
     let mut line_num: usize = 0;
@@ -687,13 +687,34 @@ pub fn load_model_from_reader_with_options(
                 })?;
             }
             "degree" => {
-                param.degree = parse_single(&mut parts, line_num, "degree")?;
+                let d: i32 = parse_single(&mut parts, line_num, "degree")?;
+                if d < 0 {
+                    return Err(SvmError::ModelFormatError(format!(
+                        "line {}: degree must be >= 0, got {}",
+                        line_num, d
+                    )));
+                }
+                param.degree = d;
             }
             "gamma" => {
-                param.gamma = parse_single(&mut parts, line_num, "gamma")?;
+                let v: f64 = parse_single(&mut parts, line_num, "gamma")?;
+                if !v.is_finite() {
+                    return Err(SvmError::ModelFormatError(format!(
+                        "line {}: gamma must be finite, got {}",
+                        line_num, v
+                    )));
+                }
+                param.gamma = v;
             }
             "coef0" => {
-                param.coef0 = parse_single(&mut parts, line_num, "coef0")?;
+                let v: f64 = parse_single(&mut parts, line_num, "coef0")?;
+                if !v.is_finite() {
+                    return Err(SvmError::ModelFormatError(format!(
+                        "line {}: coef0 must be finite, got {}",
+                        line_num, v
+                    )));
+                }
+                param.coef0 = v;
             }
             "nr_class" => {
                 nr_class = parse_single(&mut parts, line_num, "nr_class")?;
@@ -715,6 +736,14 @@ pub fn load_model_from_reader_with_options(
             }
             "rho" => {
                 rho = parse_multiple(&mut parts, line_num, "rho")?;
+                for &r in &rho {
+                    if !r.is_finite() {
+                        return Err(SvmError::ModelFormatError(format!(
+                            "line {}: rho must be finite, got {}",
+                            line_num, r
+                        )));
+                    }
+                }
             }
             "label" => {
                 label = parse_multiple(&mut parts, line_num, "label")?;
@@ -808,6 +837,12 @@ pub fn load_model_from_reader_with_options(
                     line_num, val_str
                 ))
             })?;
+            if !val.is_finite() {
+                return Err(SvmError::ModelFormatError(format!(
+                    "line {}: sv_coef must be finite, got {}",
+                    line_num, val_str
+                )));
+            }
             coef_row.push(val);
         }
 
@@ -835,6 +870,12 @@ pub fn load_model_from_reader_with_options(
             let value: f64 = val_str.parse().map_err(|_| {
                 SvmError::ModelFormatError(format!("line {}: invalid value: {}", line_num, val_str))
             })?;
+            if !value.is_finite() {
+                return Err(SvmError::ModelFormatError(format!(
+                    "line {}: feature value must be finite, got {}",
+                    line_num, val_str
+                )));
+            }
             prev_index = index;
             nodes.push(SvmNode { index, value });
         }
@@ -949,38 +990,38 @@ fn validate_model_header(
         )));
     }
 
-    // label is mandatory shape on classification, absent on regression/one-class.
-    if !label.is_empty() {
-        if !is_classification {
-            return Err(SvmError::ModelFormatError(format!(
-                "label is only valid for classification, got {} entries on svm_type {}",
-                label.len(),
-                svm_type_to_str(svm_type)
-            )));
-        }
+    // label is mandatory for classification types; must equal nr_class when present.
+    // For one_class / epsilon_svr / nu_svr, label is absent and empty is legitimate.
+    if is_classification {
+        // Require label to be present and correctly sized; an empty label vec on a
+        // classification model means the file omitted the `label` line entirely, which
+        // would leave predict.rs indexing `model.label[i]` out of bounds.
         if label.len() != nr_class {
             return Err(SvmError::ModelFormatError(format!(
-                "label has {} entries, expected nr_class ({})",
+                "label has {} entries, expected nr_class ({}) for svm_type {}",
                 label.len(),
-                nr_class
-            )));
-        }
-    }
-
-    // n_sv: same shape rule; if present on classification, sum must equal total_sv.
-    if !n_sv.is_empty() {
-        if !is_classification {
-            return Err(SvmError::ModelFormatError(format!(
-                "nr_sv is only valid for classification, got {} entries on svm_type {}",
-                n_sv.len(),
+                nr_class,
                 svm_type_to_str(svm_type)
             )));
         }
+    } else if !label.is_empty() {
+        return Err(SvmError::ModelFormatError(format!(
+            "label is only valid for classification, got {} entries on svm_type {}",
+            label.len(),
+            svm_type_to_str(svm_type)
+        )));
+    }
+
+    // n_sv: mandatory for classification; absent on regression/one-class.
+    // An empty n_sv on a classification model means the file omitted `nr_sv`,
+    // which would leave predict.rs indexing `model.n_sv[i-1]` out of bounds.
+    if is_classification {
         if n_sv.len() != nr_class {
             return Err(SvmError::ModelFormatError(format!(
-                "nr_sv has {} entries, expected nr_class ({})",
+                "nr_sv has {} entries, expected nr_class ({}) for svm_type {}",
                 n_sv.len(),
-                nr_class
+                nr_class,
+                svm_type_to_str(svm_type)
             )));
         }
         // Use checked_add to prevent silent overflow on malicious huge values.
@@ -998,6 +1039,12 @@ fn validate_model_header(
                 sum, total_sv
             )));
         }
+    } else if !n_sv.is_empty() {
+        return Err(SvmError::ModelFormatError(format!(
+            "nr_sv is only valid for classification, got {} entries on svm_type {}",
+            n_sv.len(),
+            svm_type_to_str(svm_type)
+        )));
     }
 
     // Probability arrays: must either be absent or length-match rho.
@@ -1341,7 +1388,7 @@ mod tests {
         assert!(format!("{}", result.unwrap_err()).contains("feature index 10000001 exceeds limit"));
 
         // Model file
-        let input = b"svm_type c_svc\nkernel_type linear\nnr_class 2\ntotal_sv 1\nrho 0\nSV\n0.1 10000001:1\n";
+        let input = b"svm_type c_svc\nkernel_type linear\nnr_class 2\ntotal_sv 1\nrho 0\nlabel 1 -1\nnr_sv 1 0\nSV\n0.1 10000001:1\n";
         let result = load_model_from_reader(&input[..]);
         assert!(result.is_err());
         assert!(format!("{}", result.unwrap_err()).contains("feature index 10000001 exceeds limit"));
@@ -1373,6 +1420,7 @@ kernel_type linear\n\
 nr_class 2\n\
 total_sv 1\n\
 rho 0\n\
+label 1 -1\n\
 nr_sv a 1\n\
 SV\n\
 0.1 1:0.5\n";
@@ -1387,6 +1435,8 @@ kernel_type linear\n\
 nr_class 2\n\
 total_sv 1\n\
 rho 0\n\
+label 1 -1\n\
+nr_sv 1 0\n\
 SV\n\
 1:0.5\n";
         let err = load_model_from_reader(&missing_coef[..]).unwrap_err();
@@ -1397,6 +1447,8 @@ kernel_type linear\n\
 nr_class 2\n\
 total_sv 1\n\
 rho 0\n\
+label 1 -1\n\
+nr_sv 1 0\n\
 SV\n\
 0.1 bad\n";
         let err = load_model_from_reader(&bad_feature[..]).unwrap_err();
@@ -1414,6 +1466,8 @@ kernel_type linear\n\
 nr_class 2\n\
 total_sv 2\n\
 rho 0\n\
+label 1 -1\n\
+nr_sv 1 1\n\
 SV\n\
 0.1 1:0.5\n";
         let err = load_model_from_reader(&eof_sv[..]).unwrap_err();
@@ -1429,6 +1483,8 @@ kernel_type linear\n\
 nr_class 3\n\
 total_sv 3\n\
 rho 0\n\
+label 1 -1 0\n\
+nr_sv 1 1 1\n\
 SV\n";
         let err = load_model_from_reader(&input[..]).unwrap_err();
         assert!(
@@ -1535,6 +1591,8 @@ kernel_type linear\n\
 nr_class 3\n\
 total_sv 0\n\
 rho 0 0 0\n\
+label 1 -1 0\n\
+nr_sv 0 0 0\n\
 probA 0.1 0.2\n\
 SV\n";
         let err = load_model_from_reader(&input[..]).unwrap_err();
@@ -1552,6 +1610,8 @@ kernel_type linear\n\
 nr_class 2\n\
 total_sv 0\n\
 rho 0\n\
+label 1 -1\n\
+nr_sv 0 0\n\
 prob_density_marks 0.1 0.2\n\
 SV\n";
         let err = load_model_from_reader(&input[..]).unwrap_err();
@@ -1585,6 +1645,8 @@ kernel_type linear\n\
 nr_class 2\n\
 total_sv 1\n\
 rho 0\n\
+label 1 -1\n\
+nr_sv 1 0\n\
 SV\n\
 0.1 3:0.5 1:0.3\n";
         let err = load_model_from_reader(&input[..]).unwrap_err();
@@ -1602,6 +1664,8 @@ kernel_type precomputed\n\
 nr_class 2\n\
 total_sv 1\n\
 rho 0\n\
+label 1 -1\n\
+nr_sv 1 0\n\
 SV\n\
 0.1\n";
         let err = load_model_from_reader(&input[..]).unwrap_err();
@@ -1619,6 +1683,8 @@ kernel_type linear\n\
 nr_class 2\n\
 total_sv 1\n\
 rho 0\n\
+label 1 -1\n\
+nr_sv 1 0\n\
 SV\n\
 0.1 1:0.5 1:0.3\n";
         let err = load_model_from_reader(&input[..]).unwrap_err();
@@ -1800,6 +1866,8 @@ kernel_type linear\n\
 nr_class 2\n\
 total_sv 1\n\
 rho 0\n\
+label 1 -1\n\
+nr_sv 1 0\n\
 SV\n\
 0.1 50:0.5\n";
         let opts = LoadOptions {
@@ -1866,5 +1934,111 @@ SV\n\
         let out = String::from_utf8(buf).unwrap();
         assert!(out.contains("kernel_type precomputed"));
         assert!(out.contains("0:7"));
+    }
+
+    // ─── F1: classification models must carry label + nr_sv ─────────────
+
+    /// A c_svc model that omits both `label` and `nr_sv` must return a
+    /// ParseError rather than panic in predict.rs.
+    #[test]
+    fn csvc_missing_label_and_nr_sv_returns_error_not_panic() {
+        let input = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 2\n\
+total_sv 1\n\
+rho 0\n\
+SV\n\
+1 1:1\n";
+        let err = load_model_from_reader(&input[..]).unwrap_err();
+        let msg = format!("{}", err);
+        assert!(
+            msg.contains("label has 0 entries, expected nr_class (2)"),
+            "unexpected error: {}",
+            msg
+        );
+    }
+
+    /// A c_svc model with `label` present but `nr_sv` absent must also fail.
+    #[test]
+    fn csvc_label_present_nr_sv_absent_returns_error() {
+        let input = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 2\n\
+total_sv 1\n\
+rho 0\n\
+label 1 -1\n\
+SV\n\
+1 1:1\n";
+        let err = load_model_from_reader(&input[..]).unwrap_err();
+        let msg = format!("{}", err);
+        assert!(
+            msg.contains("nr_sv has 0 entries, expected nr_class (2)"),
+            "unexpected error: {}",
+            msg
+        );
+    }
+
+    /// A valid one_class model with no label/nr_sv lines must still load Ok
+    /// (regression guard: the new classification-only requirement must not
+    /// affect one-class models).
+    #[test]
+    fn one_class_without_label_and_nr_sv_loads_ok() {
+        // one_class uses m = nr_class - 1 = 1 sv_coef column per SV row.
+        let input = b"svm_type one_class\n\
+kernel_type rbf\n\
+gamma 0.5\n\
+nr_class 2\n\
+total_sv 1\n\
+rho -0.5\n\
+SV\n\
+1 1:0.5\n";
+        let model = load_model_from_reader(&input[..]).unwrap();
+        assert_eq!(model.sv.len(), 1);
+        assert_eq!(model.label, Vec::<i32>::new());
+        assert_eq!(model.n_sv, Vec::<usize>::new());
+    }
+
+    // ─── F3: non-finite numeric fields must be rejected ──────────────────
+
+    /// A model with `rho inf` must fail with a ParseError.
+    #[test]
+    fn model_rho_inf_returns_error() {
+        let input = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 2\n\
+total_sv 1\n\
+rho inf\n\
+label 1 -1\n\
+nr_sv 1 0\n\
+SV\n\
+1 1:0.5\n";
+        let err = load_model_from_reader(&input[..]).unwrap_err();
+        let msg = format!("{}", err);
+        assert!(
+            msg.contains("rho must be finite"),
+            "unexpected error: {}",
+            msg
+        );
+    }
+
+    /// A model with `1:nan` in an SV feature must fail with a ParseError.
+    #[test]
+    fn model_sv_feature_nan_returns_error() {
+        let input = b"svm_type c_svc\n\
+kernel_type linear\n\
+nr_class 2\n\
+total_sv 1\n\
+rho 0\n\
+label 1 -1\n\
+nr_sv 1 0\n\
+SV\n\
+1 1:nan\n";
+        let err = load_model_from_reader(&input[..]).unwrap_err();
+        let msg = format!("{}", err);
+        assert!(
+            msg.contains("feature value must be finite"),
+            "unexpected error: {}",
+            msg
+        );
     }
 }

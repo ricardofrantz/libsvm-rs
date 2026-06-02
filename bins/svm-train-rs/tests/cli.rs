@@ -159,6 +159,19 @@ fn cross_validation_missing_fold_count_uses_help() {
 }
 
 #[test]
+fn bare_dash_prints_help_and_does_not_panic() {
+    // A lone "-" has no flag letter; must not panic (was: as_bytes()[1] OOB).
+    let output = Command::new(bin_path())
+        .arg("-")
+        .arg("/tmp/x")
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("Usage: svm-train"), "expected usage, got: {stdout}");
+}
+
+#[test]
 fn random_cross_validation_flag_permutations() {
     let mut state = 0xA5A5_5A5A_FEED_F00Du64;
     let base_chunks: Vec<Vec<&str>> = vec![vec!["-q"], vec!["-v", "3"], vec!["-h", "1"]];

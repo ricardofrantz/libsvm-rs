@@ -43,6 +43,11 @@ impl<'a> SvcQ<'a> {
     pub fn new(x: &'a [Vec<SvmNode>], param: &SvmParameter, y: &[i8]) -> Self {
         let l = x.len();
         let kernel = Kernel::new(x, param);
+        // `cache_size` is in MB; multiply by 1048576 to convert to bytes.
+        // The float→usize cast saturates on overflow; Cache::new clamps the
+        // resulting byte count to a safe internal limit. check_parameter is
+        // expected to have validated cache_size > 0 before we get here, but
+        // even if bypassed the cast and Cache::new prevent any panic.
         let cache = Cache::new(l, (param.cache_size * 1048576.0) as usize);
         let qd: Vec<f64> = (0..l).map(|i| kernel.evaluate(i, i)).collect();
         let y = y.to_vec();
@@ -96,6 +101,7 @@ impl<'a> OneClassQ<'a> {
     pub fn new(x: &'a [Vec<SvmNode>], param: &SvmParameter) -> Self {
         let l = x.len();
         let kernel = Kernel::new(x, param);
+        // See SvcQ::new for the cache_size cast note (saturating float→usize, Cache clamps).
         let cache = Cache::new(l, (param.cache_size * 1048576.0) as usize);
         let qd: Vec<f64> = (0..l).map(|i| kernel.evaluate(i, i)).collect();
         Self { kernel, cache, qd }
@@ -153,6 +159,7 @@ impl<'a> SvrQ<'a> {
     pub fn new(x: &'a [Vec<SvmNode>], param: &SvmParameter) -> Self {
         let l = x.len();
         let kernel = Kernel::new(x, param);
+        // See SvcQ::new for the cache_size cast note (saturating float→usize, Cache clamps).
         let cache = Cache::new(l, (param.cache_size * 1048576.0) as usize);
 
         let mut sign = vec![0i8; 2 * l];

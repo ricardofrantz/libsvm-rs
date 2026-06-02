@@ -211,6 +211,19 @@ fn scaling_accepts_permuted_scale_flags() {
 }
 
 #[test]
+fn bare_dash_prints_help_and_does_not_panic() {
+    // A lone "-" has no flag letter; must not panic (was: as_bytes()[1] OOB).
+    let output = Command::new(bin_path())
+        .arg("-")
+        .arg("/tmp/x")
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("Usage: svm-scale"), "expected usage, got: {stdout}");
+}
+
+#[test]
 fn random_scale_flag_permutations_still_generate_output() {
     let dir = unique_tmp_dir("svm-scale-fuzz");
     let data_path = dir.join("tiny.scale");
