@@ -189,7 +189,10 @@ fn bare_dash_prints_help_and_does_not_panic() {
         .unwrap();
     assert!(!output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(stdout.contains("Usage: svm-predict"), "expected usage, got: {stdout}");
+    assert!(
+        stdout.contains("Usage: svm-predict"),
+        "expected usage, got: {stdout}"
+    );
 }
 
 #[test]
