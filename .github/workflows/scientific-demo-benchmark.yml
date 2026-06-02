@@ -38,8 +38,11 @@ jobs:
   benchmark:
     name: Scientific Demo Benchmark
     runs-on: ${{ inputs.strict_env && 'self-hosted' || 'ubuntu-latest' }}
+    # `permissions` cannot use ${{ }} expressions, so it must be static. The
+    # actual write (the commit-back step) is gated by `if: inputs.auto_commit`
+    # and `persist-credentials: inputs.auto_commit`, so read-only runs never push.
     permissions:
-      contents: ${{ inputs.auto_commit && 'write' || 'read' }}
+      contents: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
