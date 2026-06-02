@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-06-02
+
+### Security
+
+- Reject malformed classification models that omit the `nr_sv`/`label` lines.
+  Such files previously loaded with empty vectors and then panicked (index out
+  of bounds) during prediction; `validate_model_header` now requires
+  `label.len() == nr_class` and `n_sv.len() == nr_class` for `c_svc`/`nu_svc`
+  and returns a `ModelFormatError` instead.
+- Guard the command-line tools against a bare `-` argument, which previously
+  panicked (`svm-train-rs`, `svm-predict-rs`, `svm-scale-rs`); they now print
+  usage and exit cleanly.
+- Reject non-finite (`NaN`/`Inf`) values in model `gamma`, `coef0`, `rho`,
+  support-vector coefficients, and feature values, and reject a negative
+  `degree`, at load time.
+- `cargo-deny` advisory policy now fails CI on yanked (`yanked = "deny"`) and
+  unmaintained (`unmaintained = "all"`) crates.
+
+### Changed
+
+- Retain the upstream LIBSVM copyright (Chih-Chung Chang and Chih-Jen Lin)
+  alongside the Rust port's. Restore the upstream BSD-3-Clause `COPYRIGHT` file
+  for the vendored source and add a project `NOTICE` documenting provenance.
+
 ## [0.8.0] - 2026-04-22
 
 ### Added
