@@ -1,63 +1,64 @@
-# Goal: SvmParameter builder with construction-time validation   (bead: libsvm-rs-zrt)
+# Goal: Close the SVR probability-training perf gap   (bead: libsvm-rs-jeh)
 
 ## 1. Objective
-Add `SvmParameterBuilder`: a fluent, documented, additive way to construct a
-validated `SvmParameter`. Ergonomics layer only — zero semantic change
-(VISION.md point 5: idiomatic to hold, identical in behavior).
+Rust train_probability is the one benchmark where we lose to C (median 1.025,
+worst ~1.39× on housing_scale ε-SVR). Profile it, remove the serial waste
+(allocations/copies/cache behavior — NOT algorithm changes), and prove parity
+is untouched. VISION.md point 4: a replacement that is slower is not a
+replacement.
 
 ## 2. Acceptance Criteria
-- [ ] New module `crates/libsvm/src/builder.rs` with `SvmParameterBuilder`:
-      one method per parameter (svm_type, kernel_type, degree, gamma, coef0,
-      c, nu, p, cache_size, eps, shrinking, probability, weight/weights),
-      LIBSVM-matching names and docs stating each default.
-- [ ] `build(self) -> Result<SvmParameter, SvmError>` constructs the struct
-      and calls the EXISTING `SvmParameter::validate()`
-      (crates/libsvm/src/types.rs:136) — do NOT duplicate validation rules.
-      Docs state the split: data-dependent checks stay in `check_parameter`.
-- [ ] Defaults identical to `SvmParameter::default()`: a no-method
-      `build()` equals `SvmParameter::default()` (unit test asserts equality).
-- [ ] Exported from lib.rs; doctest on the builder showing the README
-      Quick Start configuration (CSvc, Rbf, gamma 1/13, c 1.0) via builder.
-- [ ] Unit tests: happy path equality vs field assignment; at least 4
-      invalid cases rejected by build() (e.g. negative gamma, eps <= 0,
-      cache_size <= 0, negative degree) asserting SvmError is returned.
-- [ ] No changes to SvmParameter fields, Default, validate(), training,
-      solver, or I/O.
+- [ ] Profile evidence captured BEFORE any code change: flamegraph or
+      perf report of `svm-train-rs -s 3 -t 2 -b 1 data/housing_scale`
+      (release build w/ debug symbols), summary written to
+      `reference/perf_svr_probability_notes.md` (top functions + % time).
+- [ ] Minimal fixes implemented in the hot paths the profile justifies
+      (candidates: per-fold problem subset cloning, fold-loop allocations in
+      probability.rs/cross_validation.rs, cache sizing). Identical arithmetic
+      and iteration order — no result value may change.
+- [ ] Benchmark re-run with `BENCH_WARMUP=3 BENCH_RUNS=30
+      python3 scripts/benchmark_compare.py`; before/after train_probability
+      ratios recorded in the notes file. Target worst case ≤1.15, OR
+      documented evidence the residual gap is environmental/benchmark noise.
+- [ ] Differential suite unchanged: `python3 scripts/run_differential_suite.py`
+      reports 236 pass / 4 warn / 0 fail / 10 skip, log saved to
+      `.sc/jeh-differential.log` (do not commit the log).
+- [ ] `cargo test --locked --all-features` green.
 
 ## 3. Verification
-- Quick: `cargo test --locked -p libsvm-rs builder`
-- Full:  `cargo test --locked --all-features`
-         `cargo clippy --locked --all-targets --all-features -- -D warnings`
-         `cargo fmt --all -- --check`
+- Quick: `cargo test --locked -p libsvm-rs probability cross_validation`
+- Full (logged, expensive — run once, keep logs in .sc/):
+  `python3 scripts/run_differential_suite.py 2>&1 | tee .sc/jeh-differential.log | tail -5`
+  `BENCH_WARMUP=3 BENCH_RUNS=30 python3 scripts/benchmark_compare.py 2>&1 | tee .sc/jeh-bench.log | tail -20`
 
 ## 4. Scope
-✅ ALWAYS:    crates/libsvm/src/builder.rs (new), crates/libsvm/src/lib.rs
-              (module decl + re-export only), README.md (optional: one short
-              builder example beside the existing Quick Start)
-⚠️ ASK FIRST: any change to types.rs or error.rs
-🚫 NEVER:     solver.rs, train.rs, io.rs, kernel.rs, probability.rs,
-              cross_validation.rs, vendor/, reference/, .github/
+✅ ALWAYS:    crates/libsvm/src/probability.rs, crates/libsvm/src/cross_validation.rs,
+              crates/libsvm/src/cache.rs, crates/libsvm/src/train.rs (subset
+              construction only), reference/perf_svr_probability_notes.md (new)
+⚠️ ASK FIRST: solver.rs, kernel.rs, qmatrix.rs, anything changing numeric results
+🚫 NEVER:     io.rs formatting, vendor/, .github/, scripts/ (benchmark code is
+              the measuring stick — do not "fix" the benchmark),
+              reference/benchmark_report.md regeneration (supervisor decides)
 
 ## 5. Non-Goals / Constraints
-- NOT this cycle: problem-dependent validation in the builder; deprecating
-  field assignment; new dependencies.
-- `weight` builder method appends `(label, weight)` pairs matching the
-  existing `weight: Vec<(i32, f64)>` representation.
+- NOT this cycle: rayon/parallelism (separate bead libsvm-rs-eo9 depends on
+  this one), algorithmic changes, solver tuning.
+- A NEGATIVE result is acceptable: if the profile shows no Rust-side waste,
+  write the evidence into the notes file and stop — do not force changes.
 
 ## 6. Context Pointers
-- `br show libsvm-rs-zrt` — full background/reasoning/considerations.
-- `VISION.md` — additive-API rule.
-- `crates/libsvm/src/types.rs:130-200` — SvmParameter, Default, validate(),
-  check_parameter (already implement the validation split; reuse, don't move).
-- Module style reference: small focused modules like metrics.rs.
-- Skills: rust.
+- `br show libsvm-rs-jeh` — full background, candidate hypotheses, reasoning.
+- `VISION.md` — parity is the product; speed without parity is regression.
+- `reference/benchmark_report.md` — current ratios (the baseline).
+- svm_svr_probability upstream: vendor/libsvm/svm.cpp ~lines 1130–1250.
+- Skills: rust, systematic-debugging, profiling-software-performance.
 
 ## 7. Task Breakdown
-1. Write builder struct + methods + docs → compiles.
-2. build() + tests (equality, invalid cases, doctest) → quick gate green.
-3. lib.rs export + optional README snippet → full gate green.
+1. Build + profile the worst case → notes file with top hotspots.
+2. Fix the top justified waste → quick gate green after each change.
+3. Re-benchmark + differential suite → record before/after, logs in .sc/.
 
 ## 8. Stop Conditions
-- DONE when all Acceptance Criteria pass and the full gate is green.
-- STOP and report if validate() proves insufficient for a documented C
-  svm_check_parameter rule (would need types.rs changes — Ask-first).
+- DONE when criteria pass (including the documented-negative-result path).
+- STOP and report if: a fix would require touching ⚠️ files, differential
+  counts change at all, or profiling tools are unavailable on this box.
