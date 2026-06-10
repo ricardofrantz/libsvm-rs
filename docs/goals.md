@@ -1,64 +1,62 @@
-# Goal: Feature-gated serde support for SvmModel/SvmParameter   (bead: libsvm-rs-8ox)
+# Goal: Wire the rayon feature — parallel cross-validation folds   (bead: libsvm-rs-eo9)
 
 ## 1. Objective
-Optional `serde` feature so embedding applications can carry models in their own
-serialized state (JSON/bincode) without round-tripping through the text format.
-Text format stays canonical for C interchange (VISION point 2). The bulk of the
-work is the deserialization trust boundary — serde must enforce the SAME
-validation as io.rs load_model. Full spec: `br show libsvm-rs-8ox`.
+Cargo.toml declares an optional `rayon` dep but zero code uses it. Under
+`cfg(feature = "rayon")`, parallelize the fold loop in `svm_cross_validation`
+(cross_validation.rs) and the internal 5-fold CV in SVR probability training
+(probability.rs). Serial path stays the default and byte-identical to today.
+Full spec: `br show libsvm-rs-eo9`.
 
 ## 2. Acceptance Criteria
-- [ ] `serde = { version = "1", features = ["derive"], optional = true }` +
-      a `serde` feature in crates/libsvm/Cargo.toml; serde_json as
-      dev-dependency only. No new default deps:
-      `cargo tree --no-default-features --prefix none | grep -c serde` == 0.
-- [ ] cfg_attr derives for SvmNode, SvmParameter, SvmType, KernelType (+ only
-      what compilation requires from types.rs). Enums serialize as LIBSVM
-      integer codes; the choice is documented and pinned by a snapshot test.
-- [ ] SvmModel Deserialize goes through a validating path: deserialize a
-      private raw struct, then run a shared `validate_model()` factored out of
-      io.rs — ONE invariant list used by both the text-load and serde paths
-      (header sanity, label/coef length invariants, NaN/Inf rejection).
-- [ ] Round-trip tests (new crates/libsvm/tests/serde_roundtrip.rs): train on
-      heart_scale (classification + probability) and an SVR model; model →
-      serde_json → model → save_model text == original text; f64 fields
-      asserted via to_bits, not approximate equality.
-- [ ] Malicious-input tests: serde-path cases in tests/malicious_input.rs
-      mirroring the text-format cases (length mismatches, non-finite
-      gamma/rho/sv_coef, negative degree) — each returns SvmError, never panics.
-- [ ] Docs: Cargo.toml feature comment, lib.rs feature docs, README one
-      paragraph (serde vs save_model guidance).
-- [ ] Gates: `cargo test --locked --features serde -p libsvm-rs` green;
-      `cargo test --locked --all-features` green;
-      `cargo test --locked --no-default-features` green;
-      `cargo clippy --locked --all-targets --all-features -- -D warnings`;
-      `cargo fmt --all -- --check`.
+- [ ] Fold ASSIGNMENT (shuffle/PRNG) stays on the serial path, computed before
+      any parallelism — fold membership identical with feature on/off. Folds
+      write to disjoint slices (indexed collection / par_chunks; no locks).
+- [ ] Bitwise-equality test (new tests/rayon_parity.rs or similar): CV results
+      identical via f64::to_bits, feature on vs off — heart_scale and
+      housing_scale; classification + SVR + probability. NOTE: the on/off halves
+      cannot run in one cargo invocation; pin expected to_bits snapshots that
+      both `--features rayon` and default test runs assert against, OR have the
+      gate script run the test under both feature sets and diff outputs.
+- [ ] No rayon in default tree: `cargo tree --no-default-features -e normal
+      --prefix none | grep -c rayon` == 0 (note `-e normal` — dev-deps don't count).
+- [ ] Print/quiet decision: parallel folds must not interleave per-fold training
+      output — suppress or buffer fold-internal prints under the rayon path and
+      document the choice in lib.rs docs. No interleaved garbage.
+- [ ] Memory note documented (README/lib.rs): k parallel folds = up to
+      min(k, threads) kernel caches of cache_size each; never silently divide it.
+- [ ] Docs: Cargo.toml [features] comment, lib.rs feature docs, README one
+      paragraph (opt-in, preserves zero-default-deps story).
+- [ ] CI: minimal addition to .github/workflows/ci.yml —
+      `cargo test --locked --features rayon` in the existing test job.
+- [ ] Informational: measured wall-clock speedup on 5-fold CV on this box
+      (any >1.5× on 4+ cores fine); record numbers in the CODER REPORT.
+- [ ] Gates: bash .sc/eo9.gate.sh green.
 
 ## 3. Verification
-- Quick: `cargo test --locked --features serde -p libsvm-rs serde`
-- Full: the five gate commands in AC7 (none are long; no .sc/ logging needed).
+- Quick: `cargo test --locked --features rayon -p libsvm-rs cross_validation`
+- Full: `bash .sc/eo9.gate.sh` (fmt, clippy all-features -D warnings, test
+  matrix incl. no-default-features, dep-tree check, differential suite —
+  serial default path, counts must stay 240/0/0/10).
 
 ## 4. Scope
-✅ ALWAYS:    crates/libsvm/Cargo.toml, crates/libsvm/src/types.rs, io.rs
-              (validate_model factoring only — no behavior change to text I/O),
-              lib.rs (docs/feature), tests/malicious_input.rs,
-              tests/serde_roundtrip.rs (new), README.md (one paragraph)
-⚠️ ASK FIRST: SvmProblem serde (only if literally a bare derive with zero
-              validation surface — otherwise defer and note it), any pub API
-              signature change beyond additive derives + validate_model
-🚫 NEVER:     vendor/, scripts/, .github/, bins/, io.rs text-format semantics,
-              solver/kernel/probability code, workspace root Cargo.toml deps
+✅ ALWAYS:    crates/libsvm/src/cross_validation.rs, probability.rs (fold-loop
+              parallelization only), lib.rs (cfg + docs), crates/libsvm/Cargo.toml
+              (feature comment), README.md (one paragraph),
+              .github/workflows/ci.yml (one test step), new parity test file
+⚠️ ASK FIRST: any change to fold-assignment logic or util.rs RNG, any pub API
+              signature change, parallelism anywhere besides the two fold loops
+🚫 NEVER:     solver.rs, kernel.rs, qmatrix.rs, train.rs internals, vendor/,
+              scripts/, reference/, io.rs, workspace root Cargo.toml deps
 
 ## 5. Non-Goals / Constraints
-- serde is NOT a model-interchange format with C — text format remains the
-  only compat surface; say so in the docs paragraph.
-- Lockfile will change (serde/serde_json pins) — that is expected and allowed.
+- Parallelism inside svm_train/solver is OUT — parity risk. Folds only.
+- Default (no-feature) build must compile the identical serial code.
 
 ## 6. Context Pointers
-- `br show libsvm-rs-8ox` — full spec incl. trust-boundary reasoning.
-- io.rs load_model validation (v0.8.1 security work) — the invariant source.
-- `VISION.md` points 2 and 5 — text format canonical; additive features only.
+- `br show libsvm-rs-eo9` — full spec incl. determinism reasoning.
+- `VISION.md` point 4 (performance) — rayon stays opt-in.
+- util.rs c_rand/shuffle (4r5 work) — do not touch; assignment uses it serially.
 
 ## 7. Stop Conditions
-- DONE when criteria pass. STOP if validation cannot be cleanly shared between
-  the two paths, or an ⚠️ item is needed.
+- DONE when criteria pass. STOP if bitwise on/off parity cannot be achieved or
+  an ⚠️ item is needed.
