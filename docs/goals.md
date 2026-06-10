@@ -1,54 +1,63 @@
-# Goal: Write the C LIBSVM → libsvm-rs migration guide   (bead: libsvm-rs-966)
+# Goal: SvmParameter builder with construction-time validation   (bead: libsvm-rs-zrt)
 
 ## 1. Objective
-Create `docs/MIGRATION.md`: the document that takes a current C LIBSVM user
-(CLI or C API / libsvm-sys2) to the exact libsvm-rs equivalent. This is the
-core "drop-in replacement" story of VISION.md made concrete.
+Add `SvmParameterBuilder`: a fluent, documented, additive way to construct a
+validated `SvmParameter`. Ergonomics layer only — zero semantic change
+(VISION.md point 5: idiomatic to hold, identical in behavior).
 
 ## 2. Acceptance Criteria
-- [ ] `docs/MIGRATION.md` exists with all six sections from the bead
-      (`br show libsvm-rs-966`): CLI flag table, C API → Rust API table,
-      memory-model differences, format-compatibility statement,
-      libsvm-sys2 section, untrusted-input differences.
-- [ ] Every flag in the usage text of `bins/svm-train-rs/src/main.rs`,
-      `bins/svm-predict-rs/src/main.rs`, `bins/svm-scale-rs/src/main.rs`
-      appears in the CLI table.
-- [ ] Every API-table row verified against `vendor/libsvm/svm.h` and
-      `crates/libsvm/src/lib.rs` exports — no invented names.
-- [ ] README.md links to the guide (one line, in the existing docs area).
-- [ ] Parity wording reuses the README "Parity Claim" framing — numerical
-      equivalence within tolerance, never bitwise.
+- [ ] New module `crates/libsvm/src/builder.rs` with `SvmParameterBuilder`:
+      one method per parameter (svm_type, kernel_type, degree, gamma, coef0,
+      c, nu, p, cache_size, eps, shrinking, probability, weight/weights),
+      LIBSVM-matching names and docs stating each default.
+- [ ] `build(self) -> Result<SvmParameter, SvmError>` constructs the struct
+      and calls the EXISTING `SvmParameter::validate()`
+      (crates/libsvm/src/types.rs:136) — do NOT duplicate validation rules.
+      Docs state the split: data-dependent checks stay in `check_parameter`.
+- [ ] Defaults identical to `SvmParameter::default()`: a no-method
+      `build()` equals `SvmParameter::default()` (unit test asserts equality).
+- [ ] Exported from lib.rs; doctest on the builder showing the README
+      Quick Start configuration (CSvc, Rbf, gamma 1/13, c 1.0) via builder.
+- [ ] Unit tests: happy path equality vs field assignment; at least 4
+      invalid cases rejected by build() (e.g. negative gamma, eps <= 0,
+      cache_size <= 0, negative degree) asserting SvmError is returned.
+- [ ] No changes to SvmParameter fields, Default, validate(), training,
+      solver, or I/O.
 
 ## 3. Verification
-- `for f in s t d g r c n p m e h b q v w; do grep -q -- "-$f" docs/MIGRATION.md || echo "MISSING -$f"; done`  (no output = pass; `-wi` counts for `w`)
-- Every markdown link target in MIGRATION.md exists:
-  `grep -oP '\]\(\K[^)#]+' docs/MIGRATION.md | while read -r p; do [ -e "docs/$p" ] || [ -e "$p" ] || echo "BROKEN $p"; done`
-- `grep -q 'MIGRATION' README.md`
+- Quick: `cargo test --locked -p libsvm-rs builder`
+- Full:  `cargo test --locked --all-features`
+         `cargo clippy --locked --all-targets --all-features -- -D warnings`
+         `cargo fmt --all -- --check`
 
 ## 4. Scope
-✅ ALWAYS:    docs/MIGRATION.md (new), README.md (one link line only)
-⚠️ ASK FIRST: any other README change
-🚫 NEVER:     source code, vendor/, reference/, .github/, Cargo.*
+✅ ALWAYS:    crates/libsvm/src/builder.rs (new), crates/libsvm/src/lib.rs
+              (module decl + re-export only), README.md (optional: one short
+              builder example beside the existing Quick Start)
+⚠️ ASK FIRST: any change to types.rs or error.rs
+🚫 NEVER:     solver.rs, train.rs, io.rs, kernel.rs, probability.rs,
+              cross_validation.rs, vendor/, reference/, .github/
 
 ## 5. Non-Goals / Constraints
-- Documentation only — zero code changes this cycle.
-- Do not overclaim parity; do not document features that don't exist (verify
-  each claim by reading the named source file first).
+- NOT this cycle: problem-dependent validation in the builder; deprecating
+  field assignment; new dependencies.
+- `weight` builder method appends `(label, weight)` pairs matching the
+  existing `weight: Vec<(i32, f64)>` representation.
 
 ## 6. Context Pointers
-- `br show libsvm-rs-966` — full background, reasoning, section-by-section spec.
-- `VISION.md` — the north star this guide serves.
-- Sources of truth: `vendor/libsvm/svm.h`, `bins/*/src/main.rs`,
-  `crates/libsvm/src/lib.rs`, `reference/tolerance_policy.md`,
-  README "Parity Claim" section.
-- Skills: humanizer (run over the prose before finishing).
+- `br show libsvm-rs-zrt` — full background/reasoning/considerations.
+- `VISION.md` — additive-API rule.
+- `crates/libsvm/src/types.rs:130-200` — SvmParameter, Default, validate(),
+  check_parameter (already implement the validation split; reuse, don't move).
+- Module style reference: small focused modules like metrics.rs.
+- Skills: rust.
 
 ## 7. Task Breakdown
-1. Read the three CLI main.rs usage texts + svm.h → draft both tables.
-2. Write sections 3–6 (memory model, formats, libsvm-sys2, untrusted input).
-3. Add README link; run the Verification checks; humanize the prose.
+1. Write builder struct + methods + docs → compiles.
+2. build() + tests (equality, invalid cases, doctest) → quick gate green.
+3. lib.rs export + optional README snippet → full gate green.
 
 ## 8. Stop Conditions
-- DONE when all Acceptance Criteria pass and Verification is clean.
-- STOP and report if any mapped item cannot be verified in source (do not
-  guess a mapping), or if a needed file is missing.
+- DONE when all Acceptance Criteria pass and the full gate is green.
+- STOP and report if validate() proves insufficient for a documented C
+  svm_check_parameter rule (would need types.rs changes — Ask-first).
