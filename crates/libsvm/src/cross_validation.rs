@@ -71,7 +71,6 @@ pub fn svm_cross_validation(
         nr_fold = l;
     }
 
-    let mut rng: u64 = 1;
     let mut perm: Vec<usize> = (0..l).collect();
 
     // ── Fold assignment ──────────────────────────────────────────
@@ -87,7 +86,7 @@ pub fn svm_cross_validation(
         for c in 0..nr_class {
             let s = start[c];
             let n = count[c];
-            shuffle_range(&mut index, s, n, &mut rng);
+            shuffle_range(&mut index, s, n);
         }
 
         // Compute fold sizes
@@ -117,7 +116,7 @@ pub fn svm_cross_validation(
         (fold_count, fold_start)
     } else {
         // Simple random shuffle
-        shuffle_range(&mut perm, 0, l, &mut rng);
+        shuffle_range(&mut perm, 0, l);
         let fold_count: Vec<usize> = (0..nr_fold)
             .map(|i| (i + 1) * l / nr_fold - i * l / nr_fold)
             .collect();

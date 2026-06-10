@@ -7,6 +7,8 @@ Applies to: `scripts/run_differential_suite.py`
 ## Purpose
 
 Define auditable comparison rules for Rust-vs-C LIBSVM differential verification.
+Differential baselines are recorded per platform; libc `rand()` replication exists
+for macOS and Linux.
 
 ## Hard-Fail Rules
 

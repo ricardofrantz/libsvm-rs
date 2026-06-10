@@ -7,44 +7,7 @@
 use crate::predict::predict_values;
 use crate::train::svm_train;
 use crate::types::{SvmModel, SvmParameter, SvmProblem};
-use std::sync::{Mutex, OnceLock};
-
-// ─── RNG helper ──────────────────────────────────────────────────────
-
-#[cfg(target_os = "macos")]
-fn c_rand() -> usize {
-    static STATE: OnceLock<Mutex<u32>> = OnceLock::new();
-    let state = STATE.get_or_init(|| Mutex::new(1));
-    let mut guard = state
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-
-    // macOS/BSD libc rand() uses Park-Miller (MINSTD) with 31-bit modulus.
-    let hi = *guard / 127_773;
-    let lo = *guard % 127_773;
-    let test = 16_807_i64 * lo as i64 - 2_836_i64 * hi as i64;
-    *guard = if test > 0 {
-        test as u32
-    } else {
-        (test + 2_147_483_647) as u32
-    };
-    *guard as usize
-}
-
-#[cfg(not(target_os = "macos"))]
-fn c_rand() -> usize {
-    static STATE: OnceLock<Mutex<u64>> = OnceLock::new();
-    let state = STATE.get_or_init(|| Mutex::new(1));
-    let mut guard = state
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-
-    // Deterministic fallback for non-macOS builds.
-    *guard = guard
-        .wrapping_mul(6364136223846793005)
-        .wrapping_add(1442695040888963407);
-    (*guard >> 33) as usize
-}
+use crate::util::c_rand;
 
 // ─── Platt scaling ───────────────────────────────────────────────────
 

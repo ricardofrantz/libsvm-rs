@@ -1,5 +1,7 @@
 //! Shared internal utilities for libsvm-rs.
 
+use std::sync::{Mutex, OnceLock};
+
 /// Maximum supported feature index.
 pub const MAX_FEATURE_INDEX: i32 = 10_000_000;
 
@@ -66,26 +68,108 @@ pub(crate) fn group_classes(labels: &[f64]) -> GroupedClasses {
     }
 }
 
-/// Linear congruential PRNG used by legacy LIBSVM-style cross-validation shuffling.
-pub(crate) fn rng_next(state: &mut u64) -> usize {
-    *state = state
+#[cfg(target_os = "macos")]
+pub(crate) fn c_rand() -> usize {
+    static STATE: OnceLock<Mutex<u32>> = OnceLock::new();
+    let state = STATE.get_or_init(|| Mutex::new(1));
+    let mut guard = state
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+    // macOS/BSD libc rand() uses Park-Miller (MINSTD) with 31-bit modulus.
+    let hi = *guard / 127_773;
+    let lo = *guard % 127_773;
+    let test = 16_807_i64 * lo as i64 - 2_836_i64 * hi as i64;
+    *guard = if test > 0 {
+        test as u32
+    } else {
+        (test + 2_147_483_647) as u32
+    };
+    *guard as usize
+}
+
+#[cfg(target_os = "linux")]
+const GLIBC_RAND_DEGREE: usize = 31;
+#[cfg(target_os = "linux")]
+const GLIBC_RAND_SEPARATION: usize = 3;
+
+#[cfg(target_os = "linux")]
+struct GlibcRandState {
+    state: [u32; GLIBC_RAND_DEGREE],
+    front: usize,
+    rear: usize,
+}
+
+#[cfg(target_os = "linux")]
+impl GlibcRandState {
+    fn seeded(seed: u32) -> Self {
+        let mut state = [0u32; GLIBC_RAND_DEGREE];
+        state[0] = seed;
+        for i in 1..GLIBC_RAND_DEGREE {
+            state[i] = ((16_807u64 * state[i - 1] as u64) % 2_147_483_647) as u32;
+        }
+
+        let mut rng = Self {
+            state,
+            front: GLIBC_RAND_SEPARATION,
+            rear: 0,
+        };
+        for _ in 0..(10 * GLIBC_RAND_DEGREE) {
+            rng.next();
+        }
+        rng
+    }
+
+    fn next(&mut self) -> usize {
+        self.state[self.front] = self.state[self.front].wrapping_add(self.state[self.rear]);
+        let value = (self.state[self.front] >> 1) & 0x7fff_ffff;
+        self.front = (self.front + 1) % GLIBC_RAND_DEGREE;
+        self.rear = (self.rear + 1) % GLIBC_RAND_DEGREE;
+        value as usize
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn glibc_rand_state() -> &'static Mutex<GlibcRandState> {
+    static STATE: OnceLock<Mutex<GlibcRandState>> = OnceLock::new();
+    STATE.get_or_init(|| Mutex::new(GlibcRandState::seeded(1)))
+}
+
+#[cfg(target_os = "linux")]
+pub(crate) fn c_rand() -> usize {
+    glibc_rand_state()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .next()
+}
+
+/// Deterministic fallback PRNG used where libc rand() parity is not implemented.
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+pub(crate) fn c_rand() -> usize {
+    static STATE: OnceLock<Mutex<u64>> = OnceLock::new();
+    let state = STATE.get_or_init(|| Mutex::new(1));
+    let mut guard = state
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+    *guard = guard
         .wrapping_mul(6364136223846793005)
         .wrapping_add(1442695040888963407);
-    (*state >> 33) as usize
+    (*guard >> 33) as usize
 }
 
 /// Shuffle exactly `len` entries from `index[start..start + len]` in place.
 ///
-/// This helper keeps the current cross-validation semantics identical to repeated
-/// swaps with `rng_next`.
-pub(crate) fn shuffle_range(index: &mut [usize], start: usize, len: usize, state: &mut u64) {
+/// Uses the platform-scoped libc `rand()` replica so public k-fold CV consumes
+/// the same shuffle source as LIBSVM's `svm_cross_validation`.
+pub(crate) fn shuffle_range(index: &mut [usize], start: usize, len: usize) {
     if len <= 1 {
         return;
     }
     let end = start + len;
     let slice = &mut index[start..end];
     for i in 0..len {
-        let j = i + rng_next(state) % (len - i);
+        let j = i + c_rand() % (len - i);
         slice.swap(i, j);
     }
 }
@@ -109,6 +193,36 @@ pub fn parse_feature_index(idx_str: &str, max_feature_index: i32) -> Result<i32,
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn c_rand_matches_glibc_first_outputs() {
+        let expected = [
+            1_804_289_383usize,
+            846_930_886,
+            1_681_692_777,
+            1_714_636_915,
+            1_957_747_793,
+            424_238_335,
+            719_885_386,
+            1_649_760_492,
+            596_516_649,
+            1_189_641_421,
+            1_025_202_362,
+            1_350_490_027,
+            783_368_690,
+            1_102_520_059,
+            2_044_897_763,
+            1_967_513_926,
+            1_365_180_540,
+            1_540_383_426,
+            304_089_172,
+            1_303_455_736,
+        ];
+        let mut rng = GlibcRandState::seeded(1);
+        let actual: Vec<_> = (0..expected.len()).map(|_| rng.next()).collect();
+        assert_eq!(actual, expected);
+    }
 
     #[test]
     fn group_classes_reorders_binary_negative_one_positive_one() {
@@ -154,15 +268,9 @@ mod tests {
 
     #[test]
     fn shuffle_range_keeps_length_and_determinism() {
-        let mut state = 1u64;
         let mut order = vec![0, 1, 2, 3, 4];
-        shuffle_range(&mut order, 1, 3, &mut state);
+        shuffle_range(&mut order, 1, 3);
         assert_eq!(order.len(), 5);
-        // Deterministic with the same RNG state
-        state = 1;
-        let mut verify = vec![0, 1, 2, 3, 4];
-        shuffle_range(&mut verify, 1, 3, &mut state);
-        assert_eq!(order, verify);
         assert_eq!(order[0], 0);
         assert_eq!(order[4], 4);
         let mut window = order[1..4].to_vec();
@@ -172,12 +280,11 @@ mod tests {
 
     #[test]
     fn shuffle_range_does_not_change_values_outside_window() {
-        let mut state = 1u64;
         let mut order = vec![10, 11, 12, 13, 14];
         let prefix = [10];
         let suffix = [14];
 
-        shuffle_range(&mut order, 1, 3, &mut state);
+        shuffle_range(&mut order, 1, 3);
         assert_eq!(&order[..1], prefix);
         assert_eq!(&order[4..], suffix);
         assert_eq!(order.len(), 5);

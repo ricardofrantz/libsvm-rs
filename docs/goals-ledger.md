@@ -31,3 +31,18 @@
   baseline is platform-scoped (Mac/clang) — README claim needs that caveat.
 - Follow-up: parity-fix bead to be filed (glibc rand replication on Linux +
   re-baseline + document platform scope). jeh parked pending that gate.
+## libsvm-rs-4r5 — glibc rand() parity on Linux (2026-06-10)
+- AC1 glibc TYPE_3 RNG under cfg(linux): PASS (util.rs; seeding/discard/output
+  verified against glibc random_r.c semantics by supervisor)
+- AC2 hermetic unit test, 20 hardcoded glibc constants: PASS (seed-1 sequence)
+- AC3 macOS path byte-identical, fallback LCG doc-scoped: PASS (code moved to
+  util.rs verbatim; cfg gates correct — macOS build untested on this box)
+- AC4 public CV shuffle now consumes c_rand (C uses global rand() stream):
+  PASS — mandated by bead; changes mac public-CV splits toward C parity
+- AC5 DIFF_SCOPE=full on pop-os: 240 pass / 0 warn / 0 fail / 10 skip
+  (was 139/78/23/10) — exceeds Mac baseline 236/4/0/10
+- AC6 README + tolerance_policy platform-scope sentences: PASS
+- AC7 fmt/clippy -D warnings/cargo test --all-features (136+): PASS (re-run)
+- reference/ artifacts correctly reverted by coder; re-baseline deferred
+- Follow-up: re-run differential on macOS + re-baseline reference/ artifacts
+  (CV-shuffle change affects mac splits) — new bead filed

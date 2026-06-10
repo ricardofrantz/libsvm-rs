@@ -63,8 +63,10 @@ Current full differential suite against pinned upstream LIBSVM v337:
 | 250 configurations | 236 | 4 | 0 | 10 |
 
 The warnings are documented numerical near-parity cases, not prediction-logic
-failures. See [`reference/differential_report.md`](reference/differential_report.md)
-and [`reference/tolerance_policy.md`](reference/tolerance_policy.md).
+failures. Differential baselines are recorded per platform; libc `rand()`
+replication exists for macOS and Linux. See
+[`reference/differential_report.md`](reference/differential_report.md) and
+[`reference/tolerance_policy.md`](reference/tolerance_policy.md).
 
 ## Security Considerations
 
