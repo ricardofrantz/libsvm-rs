@@ -1,62 +1,64 @@
-# Goal: Close the SVR probability-training perf gap — round 2   (bead: libsvm-rs-jeh)
+# Goal: Feature-gated serde support for SvmModel/SvmParameter   (bead: libsvm-rs-8ox)
 
 ## 1. Objective
-Rust loses to C only on train_probability (median 1.025, worst ~1.39× on
-housing_scale ε-SVR). Profile evidence already captured (callgrind, committed:
-reference/perf_svr_probability_notes.md): 42.6% of instructions in
-`Kernel::evaluate`. Ask-first was GRANTED for kernel.rs (see bead comment):
-optimize the hot paths under a bitwise guard — results must not change at all.
+Optional `serde` feature so embedding applications can carry models in their own
+serialized state (JSON/bincode) without round-tripping through the text format.
+Text format stays canonical for C interchange (VISION point 2). The bulk of the
+work is the deserialization trust boundary — serde must enforce the SAME
+validation as io.rs load_model. Full spec: `br show libsvm-rs-8ox`.
 
 ## 2. Acceptance Criteria
-- [ ] BEFORE any edit: build clean-tree release binary and save baseline model
-      files to `.sc/jeh-models-before/` for: housing_scale (-s 3 -t 2 -b 1),
-      heart_scale (-s 0 -t 2 -b 1), iris.scale (-s 0 -t 2 -b 1).
-- [ ] Optimize the justified hot paths — kernel.rs allowed (e.g. layout,
-      inlining, redundant-work removal in dot/powi paths), plus probability.rs,
-      cross_validation.rs, cache.rs, train.rs subset construction. Identical
-      arithmetic, operation order, and iteration order — bitwise-same results.
-- [ ] Bitwise guard: retrain the three cases post-change; `cmp` each model file
-      byte-identical to `.sc/jeh-models-before/`. Record the cmp results in
-      reference/perf_svr_probability_notes.md.
-- [ ] Benchmark before/after: `BENCH_WARMUP=3 BENCH_RUNS=30 python3
-      scripts/benchmark_compare.py 2>&1 | tee .sc/jeh-bench.log | tail -20`;
-      append train_probability ratios to the notes file. Target worst ≤1.15 OR
-      documented evidence the residual is environmental/noise.
-- [ ] `DIFF_SCOPE=full python3 scripts/run_differential_suite.py` on this box:
-      240 pass / 0 warn / 0 fail / 10 skip (the new Linux baseline — any drift
-      from these exact counts is a STOP).
-- [ ] `cargo test --locked --all-features` green; clippy -D warnings; fmt clean.
+- [ ] `serde = { version = "1", features = ["derive"], optional = true }` +
+      a `serde` feature in crates/libsvm/Cargo.toml; serde_json as
+      dev-dependency only. No new default deps:
+      `cargo tree --no-default-features --prefix none | grep -c serde` == 0.
+- [ ] cfg_attr derives for SvmNode, SvmParameter, SvmType, KernelType (+ only
+      what compilation requires from types.rs). Enums serialize as LIBSVM
+      integer codes; the choice is documented and pinned by a snapshot test.
+- [ ] SvmModel Deserialize goes through a validating path: deserialize a
+      private raw struct, then run a shared `validate_model()` factored out of
+      io.rs — ONE invariant list used by both the text-load and serde paths
+      (header sanity, label/coef length invariants, NaN/Inf rejection).
+- [ ] Round-trip tests (new crates/libsvm/tests/serde_roundtrip.rs): train on
+      heart_scale (classification + probability) and an SVR model; model →
+      serde_json → model → save_model text == original text; f64 fields
+      asserted via to_bits, not approximate equality.
+- [ ] Malicious-input tests: serde-path cases in tests/malicious_input.rs
+      mirroring the text-format cases (length mismatches, non-finite
+      gamma/rho/sv_coef, negative degree) — each returns SvmError, never panics.
+- [ ] Docs: Cargo.toml feature comment, lib.rs feature docs, README one
+      paragraph (serde vs save_model guidance).
+- [ ] Gates: `cargo test --locked --features serde -p libsvm-rs` green;
+      `cargo test --locked --all-features` green;
+      `cargo test --locked --no-default-features` green;
+      `cargo clippy --locked --all-targets --all-features -- -D warnings`;
+      `cargo fmt --all -- --check`.
 
 ## 3. Verification
-- Quick: `cargo test --locked -p libsvm-rs kernel probability`
-- Full (logged, run once each):
-  `DIFF_SCOPE=full python3 scripts/run_differential_suite.py 2>&1 | tee .sc/jeh-differential2.log | tail -3`
-  plus the benchmark command above.
+- Quick: `cargo test --locked --features serde -p libsvm-rs serde`
+- Full: the five gate commands in AC7 (none are long; no .sc/ logging needed).
 
 ## 4. Scope
-✅ ALWAYS:    crates/libsvm/src/kernel.rs, probability.rs, cross_validation.rs,
-              cache.rs, train.rs (subset construction only),
-              reference/perf_svr_probability_notes.md (append)
-⚠️ ASK FIRST: solver.rs, qmatrix.rs, any unsafe code, SIMD intrinsics,
-              changing Qfloat/f32 vs f64 anywhere
-🚫 NEVER:     vendor/, scripts/ (the benchmark is the measuring stick),
-              .github/, io.rs formatting; do NOT regenerate committed
-              reference/ artifacts (differential_report.md, results.json,
-              benchmark_report.md) — revert if the suite rewrites them.
+✅ ALWAYS:    crates/libsvm/Cargo.toml, crates/libsvm/src/types.rs, io.rs
+              (validate_model factoring only — no behavior change to text I/O),
+              lib.rs (docs/feature), tests/malicious_input.rs,
+              tests/serde_roundtrip.rs (new), README.md (one paragraph)
+⚠️ ASK FIRST: SvmProblem serde (only if literally a bare derive with zero
+              validation surface — otherwise defer and note it), any pub API
+              signature change beyond additive derives + validate_model
+🚫 NEVER:     vendor/, scripts/, .github/, bins/, io.rs text-format semantics,
+              solver/kernel/probability code, workspace root Cargo.toml deps
 
 ## 5. Non-Goals / Constraints
-- NOT this cycle: rayon/parallelism (libsvm-rs-eo9 depends on this bead),
-  algorithmic changes (different kernel math, caching strategy redesigns).
-- A NEGATIVE result remains acceptable: if no safe win exists, write the
-  evidence into the notes file and stop — do not force changes.
+- serde is NOT a model-interchange format with C — text format remains the
+  only compat surface; say so in the docs paragraph.
+- Lockfile will change (serde/serde_json pins) — that is expected and allowed.
 
 ## 6. Context Pointers
-- `br show libsvm-rs-jeh` — background + the Ask-first grant in comments.
-- reference/perf_svr_probability_notes.md — existing callgrind evidence.
-- `VISION.md` point 4 — slower-than-C is not a replacement; parity is sacred.
-- C hot path: vendor/libsvm/svm.cpp Kernel::dot / kernel_function (~195-360).
+- `br show libsvm-rs-8ox` — full spec incl. trust-boundary reasoning.
+- io.rs load_model validation (v0.8.1 security work) — the invariant source.
+- `VISION.md` points 2 and 5 — text format canonical; additive features only.
 
 ## 7. Stop Conditions
-- DONE when criteria pass (or documented-negative-result path).
-- STOP if: any model byte differs, differential counts drift from 240/0/0/10,
-  a fix needs an ⚠️ item, or perf tooling regresses (callgrind is the fallback).
+- DONE when criteria pass. STOP if validation cannot be cleanly shared between
+  the two paths, or an ⚠️ item is needed.
