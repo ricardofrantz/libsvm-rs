@@ -1,60 +1,62 @@
-# Goal: Replicate glibc rand() for probability CV shuffle on Linux   (bead: libsvm-rs-4r5)
+# Goal: Close the SVR probability-training perf gap — round 2   (bead: libsvm-rs-jeh)
 
 ## 1. Objective
-On Linux, `c_rand()` in probability.rs falls back to a generic LCG that does NOT
-match glibc rand(), so the internal probability-CV fold shuffle diverges from the
-C reference → 23 differential fails on this box (139/78/23/10 vs the Mac baseline
-236/4/0/10). Implement glibc rand() semantics under `cfg(target_os = "linux")`,
-restore 0 fails, and make the parity claim's platform scope explicit in docs.
-Full background + algorithm spec: `br show libsvm-rs-4r5`.
+Rust loses to C only on train_probability (median 1.025, worst ~1.39× on
+housing_scale ε-SVR). Profile evidence already captured (callgrind, committed:
+reference/perf_svr_probability_notes.md): 42.6% of instructions in
+`Kernel::evaluate`. Ask-first was GRANTED for kernel.rs (see bead comment):
+optimize the hot paths under a bitwise guard — results must not change at all.
 
 ## 2. Acceptance Criteria
-- [ ] Linux `c_rand()` implements glibc's TYPE_3 additive-feedback generator
-      (31-entry table, r[i] = r[i-3] + r[i-31] mod 2^32, output (r[i] >> 1) &
-      0x7fffffff; documented seeding: LCG expansion of seed 1, discard first 310
-      outputs). Reference: glibc stdlib/random_r.c.
-- [ ] Hermetic unit test: first ≥20 outputs match hardcoded expected constants.
-      Derive the constants ONCE via a tiny throwaway C program on this box
-      (gcc available); commit only the constants, not the C program.
-- [ ] macOS path byte-identical to current code; non-mac/non-linux keeps the
-      existing LCG fallback with a doc comment scoping the parity claim.
-- [ ] Check cross_validation.rs / util.rs `shuffle_range`: if public k-fold CV
-      consumes rand() in C (vendor/libsvm/svm.cpp ~1367-1460), apply the same
-      source of randomness there; if not, note why in the report.
+- [ ] BEFORE any edit: build clean-tree release binary and save baseline model
+      files to `.sc/jeh-models-before/` for: housing_scale (-s 3 -t 2 -b 1),
+      heart_scale (-s 0 -t 2 -b 1), iris.scale (-s 0 -t 2 -b 1).
+- [ ] Optimize the justified hot paths — kernel.rs allowed (e.g. layout,
+      inlining, redundant-work removal in dot/powi paths), plus probability.rs,
+      cross_validation.rs, cache.rs, train.rs subset construction. Identical
+      arithmetic, operation order, and iteration order — bitwise-same results.
+- [ ] Bitwise guard: retrain the three cases post-change; `cmp` each model file
+      byte-identical to `.sc/jeh-models-before/`. Record the cmp results in
+      reference/perf_svr_probability_notes.md.
+- [ ] Benchmark before/after: `BENCH_WARMUP=3 BENCH_RUNS=30 python3
+      scripts/benchmark_compare.py 2>&1 | tee .sc/jeh-bench.log | tail -20`;
+      append train_probability ratios to the notes file. Target worst ≤1.15 OR
+      documented evidence the residual is environmental/noise.
 - [ ] `DIFF_SCOPE=full python3 scripts/run_differential_suite.py` on this box:
-      0 fails (record actual counts in the CODER REPORT).
-- [ ] README parity section + reference/tolerance_policy.md: one sentence each
-      stating the differential baseline is per-platform (rand() replication
-      exists for macOS and Linux; baselines recorded per platform).
-- [ ] `cargo test --locked --all-features` green; clippy `-D warnings`; fmt clean.
+      240 pass / 0 warn / 0 fail / 10 skip (the new Linux baseline — any drift
+      from these exact counts is a STOP).
+- [ ] `cargo test --locked --all-features` green; clippy -D warnings; fmt clean.
 
 ## 3. Verification
-- Quick: `cargo test --locked -p libsvm-rs c_rand` and
-  `cargo test --locked -p libsvm-rs probability`
-- Full (logged, run once):
-  `DIFF_SCOPE=full python3 scripts/run_differential_suite.py 2>&1 | tee .sc/4r5-differential.log | tail -3`
+- Quick: `cargo test --locked -p libsvm-rs kernel probability`
+- Full (logged, run once each):
+  `DIFF_SCOPE=full python3 scripts/run_differential_suite.py 2>&1 | tee .sc/jeh-differential2.log | tail -3`
+  plus the benchmark command above.
 
 ## 4. Scope
-✅ ALWAYS:    crates/libsvm/src/probability.rs, crates/libsvm/src/cross_validation.rs,
-              crates/libsvm/src/util.rs (shuffle only), README.md (one sentence),
-              reference/tolerance_policy.md (one sentence)
-⚠️ ASK FIRST: any change that alters macOS-path behavior; solver.rs/train.rs
-🚫 NEVER:     vendor/, scripts/, .github/; do NOT regenerate or modify committed
+✅ ALWAYS:    crates/libsvm/src/kernel.rs, probability.rs, cross_validation.rs,
+              cache.rs, train.rs (subset construction only),
+              reference/perf_svr_probability_notes.md (append)
+⚠️ ASK FIRST: solver.rs, qmatrix.rs, any unsafe code, SIMD intrinsics,
+              changing Qfloat/f32 vs f64 anywhere
+🚫 NEVER:     vendor/, scripts/ (the benchmark is the measuring stick),
+              .github/, io.rs formatting; do NOT regenerate committed
               reference/ artifacts (differential_report.md, results.json,
-              benchmark_report.md) — if the suite rewrites them, `git checkout`
-              those files back and report counts from the log only (supervisor
-              decides re-baselining at review).
+              benchmark_report.md) — revert if the suite rewrites them.
 
 ## 5. Non-Goals / Constraints
-- No perf work (that is libsvm-rs-jeh, gated on this bead). No algorithm changes
-  beyond the RNG. Identical call order to C at every shuffle site.
+- NOT this cycle: rayon/parallelism (libsvm-rs-eo9 depends on this bead),
+  algorithmic changes (different kernel math, caching strategy redesigns).
+- A NEGATIVE result remains acceptable: if no safe win exists, write the
+  evidence into the notes file and stop — do not force changes.
 
 ## 6. Context Pointers
-- `br show libsvm-rs-4r5` — full spec, evidence, considerations.
-- `VISION.md` — parity is the product; trust requires honest platform scope.
-- C call sites: vendor/libsvm/svm.cpp svm_binary_svc_probability,
-  svm_svr_probability (~1130-1250), svm_cross_validation (~1367-1460).
+- `br show libsvm-rs-jeh` — background + the Ask-first grant in comments.
+- reference/perf_svr_probability_notes.md — existing callgrind evidence.
+- `VISION.md` point 4 — slower-than-C is not a replacement; parity is sacred.
+- C hot path: vendor/libsvm/svm.cpp Kernel::dot / kernel_function (~195-360).
 
 ## 7. Stop Conditions
-- DONE when criteria pass. STOP and report if differential fails do not reach 0
-  after the RNG matches the unit-test constants, or an ⚠️ item is required.
+- DONE when criteria pass (or documented-negative-result path).
+- STOP if: any model byte differs, differential counts drift from 240/0/0/10,
+  a fix needs an ⚠️ item, or perf tooling regresses (callgrind is the fallback).
