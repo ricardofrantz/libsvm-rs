@@ -16,3 +16,18 @@
 - AC6 no semantic changes: PASS (diff touches builder.rs + 2-line lib.rs only)
 - Gates re-run by supervisor: 10/10 test targets ok, clippy -D warnings clean, fmt clean
 - Follow-ups: none (README builder example was optional, skipped — doctest covers it)
+## libsvm-rs-jeh — SVR probability perf gap (2026-06-10) — BLOCKED
+- Coder stopped correctly on two stop conditions; no code changes made.
+- Profile (callgrind; perf blocked by perf_event_paranoid=4): 42.6% of
+  instructions in Kernel::evaluate — hotspot is kernel.rs (Ask-first scope).
+  Evidence: reference/perf_svr_probability_notes.md (uncommitted).
+- Differential gate: brief omitted DIFF_SCOPE=full (default=quick, 45 cfgs) —
+  supervisor brief error. Full-scope re-run on THIS box: 139/78/23/10 vs
+  committed Mac baseline 236/4/0/10, unmodified tree.
+- ROOT CAUSE (supervisor triage): probability.rs c_rand() replicates BSD
+  rand() on macOS but uses a non-glibc LCG fallback elsewhere → on Linux the
+  internal probability-CV fold shuffle differs from the C reference's glibc
+  rand() → different Platt fits → 23 probability label-flip fails. Parity
+  baseline is platform-scoped (Mac/clang) — README claim needs that caveat.
+- Follow-up: parity-fix bead to be filed (glibc rand replication on Linux +
+  re-baseline + document platform scope). jeh parked pending that gate.
