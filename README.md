@@ -118,6 +118,7 @@ controlled.
 - **All 5 SVM types**: C-SVC, nu-SVC, one-class SVM, epsilon-SVR, nu-SVR (`-s 0..4`)
 - **All 5 kernel types**: linear, polynomial, RBF, sigmoid, precomputed (`-t 0..4`)
 - **Model file compatibility**: reads and writes LIBSVM text format at `%.17g` precision, so a model trained with the C library loads in Rust and vice versa
+- **Optional serde support**: enable the `serde` feature to serialize `SvmModel`/`SvmParameter` inside a Rust application's own state (for example JSON or bincode). Deserialization reuses the model validation boundary, but this is not a C/LIBSVM interchange format; use `save_model`/`load_model` text files for compatibility with other LIBSVM tools.
 - **Probability estimation** (`-b 1`): Platt scaling for binary classification, pairwise coupling for multiclass, Laplace-corrected regression, density marks for one-class
 - **Cross-validation**: stratified k-fold for classification (preserves class proportions), simple k-fold for regression and one-class
 - **CLI tools**: `svm-train-rs`, `svm-predict-rs`, `svm-scale-rs`, matching upstream flag syntax

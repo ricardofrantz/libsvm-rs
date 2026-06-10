@@ -25,6 +25,11 @@
 //! ## Feature Flags
 //!
 //! - `rayon` — Enable parallel cross-validation (off by default).
+//! - `serde` — Enable `Serialize`/`Deserialize` for model and parameter
+//!   types. `SvmType` and `KernelType` serialize as pinned LIBSVM integer
+//!   codes (`0..4`). Deserializing `SvmModel` runs the same structural
+//!   validation as the text model loader; LIBSVM text model files remain the
+//!   C-compatible interchange format.
 
 #![cfg_attr(
     not(test),

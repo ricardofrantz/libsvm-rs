@@ -63,3 +63,23 @@
 - Verdict: documented-negative-result path accepted; serial-waste hypothesis
   exhausted within scope. Path forward = rayon parallel CV (libsvm-rs-eo9).
 - Follow-up: per-platform benchmark baseline noted on libsvm-rs-dt3.
+## libsvm-rs-8ox — feature-gated serde support (2026-06-10)
+- Coder reported BLOCKED (exit 4) on a SUPERVISOR BRIEF BUG: the dep gate
+  `cargo tree --no-default-features | grep -c serde` counts dev-deps
+  (serde_json, criterion→serde). Correct gate is `-e normal`: passes with 0.
+  Work itself was complete; accepted after corrected-gate verification.
+- AC1 optional serde dep + feature, serde_json dev-only: PASS (-e normal = 0)
+- AC2 derives + enums as pinned LIBSVM integer codes + snapshot test: PASS
+- AC3 SvmModel Deserialize via raw struct + shared validate_model() factored
+  into io.rs, used by BOTH text-load and serde paths: PASS (and load_model
+  now validates strictly more than before — 136+19 tests still green)
+- AC4 round-trip tests (classification/probability/SVR, to_bits): PASS (4)
+- AC5 malicious-input serde cases: PASS — note: non-finite cases hit
+  serde_json's own null-for-NaN rejection, not validate_model (which still
+  guards non-JSON formats like bincode); error-not-panic holds either way
+- AC6 docs (Cargo.toml/lib.rs/README): PASS
+- AC7 all five gates: PASS (re-run by supervisor after touch-up)
+- TOUCH-UP (supervisor): reverted coder's criterion→optional-bench-feature
+  move (workaround for the buggy gate; would have made `cargo bench` a
+  silent no-op without --features bench); criterion restored as dev-dep.
+- Follow-ups: none

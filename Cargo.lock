@@ -379,6 +379,8 @@ dependencies = [
  "float-cmp",
  "proptest",
  "rayon",
+ "serde",
+ "serde_json",
  "thiserror",
 ]
 

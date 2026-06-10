@@ -16,6 +16,9 @@ use libsvm_rs::io::{
     load_problem_from_reader_with_options, LoadOptions,
 };
 
+#[cfg(feature = "serde")]
+use libsvm_rs::{KernelType, SvmModel, SvmNode, SvmParameter};
+
 fn fixture(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
@@ -42,6 +45,36 @@ fn assert_err_contains<E: std::fmt::Display, T: std::fmt::Debug>(
             );
         }
     }
+}
+
+#[cfg(feature = "serde")]
+fn valid_serde_model() -> SvmModel {
+    SvmModel {
+        param: SvmParameter {
+            kernel_type: KernelType::Rbf,
+            gamma: 0.5,
+            ..SvmParameter::default()
+        },
+        nr_class: 2,
+        sv: vec![vec![SvmNode {
+            index: 1,
+            value: 0.5,
+        }]],
+        sv_coef: vec![vec![0.25]],
+        rho: vec![0.0],
+        prob_a: Vec::new(),
+        prob_b: Vec::new(),
+        prob_density_marks: Vec::new(),
+        sv_indices: Vec::new(),
+        label: vec![1, -1],
+        n_sv: vec![1, 0],
+    }
+}
+
+#[cfg(feature = "serde")]
+fn assert_serde_model_err_contains(model: SvmModel, needle: &str) {
+    let json = serde_json::to_string(&model).unwrap();
+    assert_err_contains(serde_json::from_str::<SvmModel>(&json), needle);
 }
 
 // ─── Model-file vectors ──────────────────────────────────────────────
@@ -118,6 +151,63 @@ fn rejects_sv_feature_indices_not_ascending() {
         load_model(&fixture("sv_feature_indices_not_ascending.model")),
         "feature indices must be ascending",
     );
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn serde_rejects_rho_length_mismatch() {
+    let mut model = valid_serde_model();
+    model.rho.clear();
+    assert_serde_model_err_contains(model, "rho has 0 entries, expected 1");
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn serde_rejects_label_length_mismatch() {
+    let mut model = valid_serde_model();
+    model.label.pop();
+    assert_serde_model_err_contains(model, "label has 1 entries");
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn serde_rejects_sv_coef_length_mismatch() {
+    let mut model = valid_serde_model();
+    model.sv_coef[0].clear();
+    assert_serde_model_err_contains(model, "sv_coef row 0 has 0 entries, expected 1");
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn serde_rejects_non_finite_gamma() {
+    let mut model = valid_serde_model();
+    model.param.gamma = f64::INFINITY;
+    assert_serde_model_err_contains(model, "expected f64");
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn serde_rejects_non_finite_rho() {
+    let mut model = valid_serde_model();
+    model.rho[0] = f64::NAN;
+    assert_serde_model_err_contains(model, "expected f64");
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn serde_rejects_non_finite_sv_coef() {
+    let mut model = valid_serde_model();
+    model.sv_coef[0][0] = f64::INFINITY;
+    assert_serde_model_err_contains(model, "expected f64");
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn serde_rejects_negative_degree() {
+    let mut model = valid_serde_model();
+    model.param.kernel_type = KernelType::Polynomial;
+    model.param.degree = -1;
+    assert_serde_model_err_contains(model, "degree must be >= 0");
 }
 
 // ─── Problem-file vectors ────────────────────────────────────────────

@@ -50,6 +50,7 @@ pub enum KernelType {
 /// In the original LIBSVM, a sentinel node with `index = -1` marks the end
 /// of each instance. In this Rust port, instance length is tracked by
 /// `Vec::len()` instead, so no sentinel is needed.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SvmNode {
     /// 1-based feature index. Uses `i32` to match the original C `int` and
@@ -76,6 +77,7 @@ pub struct SvmProblem {
 /// SVM parameters controlling the formulation, kernel, and solver.
 ///
 /// Default values match the original LIBSVM defaults.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq)]
 pub struct SvmParameter {
     /// SVM formulation type.
@@ -278,6 +280,7 @@ pub fn check_parameter(
 /// consistent. Manually constructed values bypass those checks, so callers that
 /// accept external model text should prefer [`crate::io::load_model`] or
 /// [`crate::io::load_model_from_reader`].
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[derive(Debug, Clone, PartialEq)]
 pub struct SvmModel {
     /// Parameters used during training.
@@ -305,6 +308,104 @@ pub struct SvmModel {
     pub label: Vec<i32>,
     /// Number of support vectors per class.
     pub n_sv: Vec<usize>,
+}
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for SvmType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_i32(*self as i32)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for SvmType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        match <i32 as serde::Deserialize>::deserialize(deserializer)? {
+            0 => Ok(SvmType::CSvc),
+            1 => Ok(SvmType::NuSvc),
+            2 => Ok(SvmType::OneClass),
+            3 => Ok(SvmType::EpsilonSvr),
+            4 => Ok(SvmType::NuSvr),
+            code => Err(serde::de::Error::custom(format!(
+                "unknown SvmType code {code}"
+            ))),
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for KernelType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_i32(*self as i32)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for KernelType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        match <i32 as serde::Deserialize>::deserialize(deserializer)? {
+            0 => Ok(KernelType::Linear),
+            1 => Ok(KernelType::Polynomial),
+            2 => Ok(KernelType::Rbf),
+            3 => Ok(KernelType::Sigmoid),
+            4 => Ok(KernelType::Precomputed),
+            code => Err(serde::de::Error::custom(format!(
+                "unknown KernelType code {code}"
+            ))),
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for SvmModel {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(serde::Deserialize)]
+        struct RawSvmModel {
+            param: SvmParameter,
+            nr_class: usize,
+            sv: Vec<Vec<SvmNode>>,
+            sv_coef: Vec<Vec<f64>>,
+            rho: Vec<f64>,
+            prob_a: Vec<f64>,
+            prob_b: Vec<f64>,
+            prob_density_marks: Vec<f64>,
+            sv_indices: Vec<usize>,
+            label: Vec<i32>,
+            n_sv: Vec<usize>,
+        }
+
+        let raw = <RawSvmModel as serde::Deserialize>::deserialize(deserializer)?;
+        let model = SvmModel {
+            param: raw.param,
+            nr_class: raw.nr_class,
+            sv: raw.sv,
+            sv_coef: raw.sv_coef,
+            rho: raw.rho,
+            prob_a: raw.prob_a,
+            prob_b: raw.prob_b,
+            prob_density_marks: raw.prob_density_marks,
+            sv_indices: raw.sv_indices,
+            label: raw.label,
+            n_sv: raw.n_sv,
+        };
+        crate::io::validate_model(&model).map_err(serde::de::Error::custom)?;
+        Ok(model)
+    }
 }
 
 impl SvmModel {

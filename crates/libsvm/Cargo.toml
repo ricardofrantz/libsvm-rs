@@ -15,9 +15,12 @@ categories = ["science", "algorithms"]
 
 [dependencies]
 thiserror = { workspace = true }
+serde = { version = "1", features = ["derive"], optional = true }
 
 [features]
 default = []
+# Enable serde Serialize/Deserialize for model and parameter types. Serialized enums use LIBSVM integer codes.
+serde = ["dep:serde"]
 rayon = ["dep:rayon"]
 
 [dependencies.rayon]
@@ -28,6 +31,7 @@ optional = true
 float-cmp = { workspace = true }
 criterion = { version = "0.5", features = ["html_reports"] }
 proptest = { workspace = true }
+serde_json = "1"
 
 [[bench]]
 name = "svm_bench"

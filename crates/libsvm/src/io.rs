@@ -886,7 +886,7 @@ pub fn load_model_from_reader_with_options(
         sv.push(nodes);
     }
 
-    Ok(SvmModel {
+    let model = SvmModel {
         param,
         nr_class,
         sv,
@@ -898,7 +898,123 @@ pub fn load_model_from_reader_with_options(
         sv_indices: Vec::new(), // not stored in model file
         label,
         n_sv,
-    })
+    };
+    validate_model(&model)?;
+    Ok(model)
+}
+
+/// Validate the shared structural invariants required of a loaded/deserialized model.
+pub(crate) fn validate_model(model: &SvmModel) -> Result<(), SvmError> {
+    if model.param.degree < 0 {
+        return Err(SvmError::ModelFormatError(format!(
+            "degree must be >= 0, got {}",
+            model.param.degree
+        )));
+    }
+    if !model.param.gamma.is_finite() {
+        return Err(SvmError::ModelFormatError(format!(
+            "gamma must be finite, got {}",
+            model.param.gamma
+        )));
+    }
+    if !model.param.coef0.is_finite() {
+        return Err(SvmError::ModelFormatError(format!(
+            "coef0 must be finite, got {}",
+            model.param.coef0
+        )));
+    }
+
+    validate_model_header(
+        model.param.svm_type,
+        model.nr_class,
+        model.sv.len(),
+        &model.rho,
+        &model.label,
+        &model.prob_a,
+        &model.prob_b,
+        &model.prob_density_marks,
+        &model.n_sv,
+    )?;
+
+    let expected_rows = model.nr_class.saturating_sub(1).max(1);
+    if model.sv_coef.len() != expected_rows {
+        return Err(SvmError::ModelFormatError(format!(
+            "sv_coef has {} rows, expected {}",
+            model.sv_coef.len(),
+            expected_rows
+        )));
+    }
+    for (row_idx, row) in model.sv_coef.iter().enumerate() {
+        if row.len() != model.sv.len() {
+            return Err(SvmError::ModelFormatError(format!(
+                "sv_coef row {} has {} entries, expected {}",
+                row_idx,
+                row.len(),
+                model.sv.len()
+            )));
+        }
+        for &coef in row {
+            if !coef.is_finite() {
+                return Err(SvmError::ModelFormatError(format!(
+                    "sv_coef must be finite, got {}",
+                    coef
+                )));
+            }
+        }
+    }
+
+    for &r in &model.rho {
+        if !r.is_finite() {
+            return Err(SvmError::ModelFormatError(format!(
+                "rho must be finite, got {}",
+                r
+            )));
+        }
+    }
+    for (name, values) in [("probA", &model.prob_a), ("probB", &model.prob_b)] {
+        for &value in values {
+            if !value.is_finite() {
+                return Err(SvmError::ModelFormatError(format!(
+                    "{} must be finite, got {}",
+                    name, value
+                )));
+            }
+        }
+    }
+    for &value in &model.prob_density_marks {
+        if !value.is_finite() {
+            return Err(SvmError::ModelFormatError(format!(
+                "prob_density_marks must be finite, got {}",
+                value
+            )));
+        }
+    }
+
+    for (row_idx, nodes) in model.sv.iter().enumerate() {
+        let mut prev_index = 0;
+        for (node_idx, node) in nodes.iter().enumerate() {
+            if node_idx > 0 && node.index <= prev_index {
+                return Err(SvmError::ModelFormatError(format!(
+                    "support vector {} feature indices must be ascending: {} follows {}",
+                    row_idx + 1,
+                    node.index,
+                    prev_index
+                )));
+            }
+            if !node.value.is_finite() {
+                return Err(SvmError::ModelFormatError(format!(
+                    "feature value must be finite, got {}",
+                    node.value
+                )));
+            }
+            prev_index = node.index;
+        }
+        if model.param.kernel_type == KernelType::Precomputed {
+            validate_precomputed_row(nodes, row_idx + 1, "support vector")?;
+        }
+    }
+
+    Ok(())
 }
 
 fn validate_precomputed_row(
