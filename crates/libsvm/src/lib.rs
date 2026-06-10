@@ -24,8 +24,9 @@
 //!
 //! ## Feature Flags
 //!
-//! - `rayon` — Enable parallel cross-validation (off by default). Fold
-//!   assignment remains serial and deterministic, then each fold trains on an
+//! - `rayon` — Enable parallel cross-validation (off by default), including
+//!   probability-calibration CV folds for binary SVC models. Fold assignment
+//!   remains serial and deterministic, then each fold trains on an
 //!   independent worker. Per-fold training diagnostics are suppressed while the
 //!   parallel workers run so output cannot interleave; use the default serial
 //!   path if you need fold-internal progress text. With `k` parallel folds, peak

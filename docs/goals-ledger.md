@@ -113,3 +113,17 @@
 - Brief correction vs bead: bead background was stale (wasm-integration job
   already exists); scope narrowed to the direct core compile check.
 - Follow-ups: none
+## libsvm-rs-aud — parallel binary-SVC probability internal CV (2026-06-10)
+- AC shuffle serial, fold bodies rand-free, scatter after collect: PASS
+  (supervisor read full diff; Codex: no actionable correctness issues)
+- AC serial path pure extraction (evaluate_binary_svc_probability_fold),
+  degenerate class-count branches preserved as fill vecs: PASS
+- AC bitwise regression — pinned rayon_parity digests unchanged, test green
+  with AND without --features rayon: PASS (supervisor re-run)
+- AC with_suppressed_info under rayon only, lib.rs doc sentence: PASS
+- Gates: .sc/aud.gate.sh GATE_EXIT=0 (fmt/clippy/3-way tests/dep-tree/quick
+  differential 45/0/0/0; reference+data artifacts auto-restored by gate)
+- Informational: rayon_parity wall-clock 1.55s serial → 0.69s rayon (~2.2x)
+- Scope note: SVR side needed nothing — svm_svr_probability already routes
+  through eo9's parallel branch (probability=false); brief narrowed the bead.
+- Follow-ups: none

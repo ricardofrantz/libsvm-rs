@@ -8,6 +8,8 @@ use crate::predict::predict_values;
 use crate::train::svm_train;
 use crate::types::{SvmModel, SvmParameter, SvmProblem};
 use crate::util::c_rand;
+#[cfg(feature = "rayon")]
+use rayon::prelude::*;
 
 // ─── Platt scaling ───────────────────────────────────────────────────
 
@@ -208,6 +210,66 @@ pub fn multiclass_probability(k: usize, r: &[Vec<f64>], p: &mut [f64]) {
 
 // ─── Binary SVC probability via internal CV ──────────────────────────
 
+fn evaluate_binary_svc_probability_fold(
+    prob: &SvmProblem,
+    param: &SvmParameter,
+    cp: f64,
+    cn: f64,
+    perm: &[usize],
+    begin: usize,
+    end: usize,
+) -> Vec<f64> {
+    let l = prob.labels.len();
+
+    // Build training sub-problem (exclude held-out fold)
+    let mut sub_instances = Vec::with_capacity(l - (end - begin));
+    let mut sub_labels = Vec::with_capacity(l - (end - begin));
+
+    for &pi in &perm[..begin] {
+        sub_instances.push(prob.instances[pi].clone());
+        sub_labels.push(prob.labels[pi]);
+    }
+    for &pi in &perm[end..l] {
+        sub_instances.push(prob.instances[pi].clone());
+        sub_labels.push(prob.labels[pi]);
+    }
+
+    // Count classes in training set
+    let p_count = sub_labels.iter().filter(|&&y| y > 0.0).count();
+    let n_count = sub_labels.len() - p_count;
+
+    if p_count == 0 && n_count == 0 {
+        vec![0.0; end - begin]
+    } else if p_count > 0 && n_count == 0 {
+        vec![1.0; end - begin]
+    } else if p_count == 0 && n_count > 0 {
+        vec![-1.0; end - begin]
+    } else {
+        let mut subparam = param.clone();
+        subparam.probability = false;
+        subparam.c = 1.0;
+        subparam.weight = vec![(1, cp), (-1, cn)];
+
+        let subprob = SvmProblem {
+            labels: sub_labels,
+            instances: sub_instances,
+        };
+        #[cfg(feature = "rayon")]
+        let submodel = crate::with_suppressed_info(|| svm_train(&subprob, &subparam));
+        #[cfg(not(feature = "rayon"))]
+        let submodel = svm_train(&subprob, &subparam);
+
+        (begin..end)
+            .map(|j| {
+                let mut dv = [0.0];
+                predict_values(&submodel, &prob.instances[perm[j]], &mut dv);
+                // Sign correction: ensure +1/−1 ordering
+                dv[0] * submodel.label[0] as f64
+            })
+            .collect()
+    }
+}
+
 /// Estimate Platt scaling parameters for a binary sub-problem.
 ///
 /// Performs 5-fold CV internally: trains on 4 folds with class weights
@@ -232,56 +294,36 @@ pub fn svm_binary_svc_probability(
         perm.swap(i, j);
     }
 
-    for fold in 0..nr_fold {
-        let begin = fold * l / nr_fold;
-        let end = (fold + 1) * l / nr_fold;
+    #[cfg(feature = "rayon")]
+    {
+        let fold_predictions: Vec<Vec<f64>> = (0..nr_fold)
+            .into_par_iter()
+            .map(|fold| {
+                let begin = fold * l / nr_fold;
+                let end = (fold + 1) * l / nr_fold;
+                evaluate_binary_svc_probability_fold(prob, param, cp, cn, &perm, begin, end)
+            })
+            .collect();
 
-        // Build training sub-problem (exclude held-out fold)
-        let mut sub_instances = Vec::with_capacity(l - (end - begin));
-        let mut sub_labels = Vec::with_capacity(l - (end - begin));
-
-        for &pi in &perm[..begin] {
-            sub_instances.push(prob.instances[pi].clone());
-            sub_labels.push(prob.labels[pi]);
+        for (fold, predictions) in fold_predictions.into_iter().enumerate() {
+            let begin = fold * l / nr_fold;
+            let end = (fold + 1) * l / nr_fold;
+            for (j, prediction) in (begin..end).zip(predictions.into_iter()) {
+                dec_values[perm[j]] = prediction;
+            }
         }
-        for &pi in &perm[end..l] {
-            sub_instances.push(prob.instances[pi].clone());
-            sub_labels.push(prob.labels[pi]);
-        }
+    }
 
-        // Count classes in training set
-        let p_count = sub_labels.iter().filter(|&&y| y > 0.0).count();
-        let n_count = sub_labels.len() - p_count;
+    #[cfg(not(feature = "rayon"))]
+    {
+        for fold in 0..nr_fold {
+            let begin = fold * l / nr_fold;
+            let end = (fold + 1) * l / nr_fold;
+            let predictions =
+                evaluate_binary_svc_probability_fold(prob, param, cp, cn, &perm, begin, end);
 
-        if p_count == 0 && n_count == 0 {
-            for j in begin..end {
-                dec_values[perm[j]] = 0.0;
-            }
-        } else if p_count > 0 && n_count == 0 {
-            for j in begin..end {
-                dec_values[perm[j]] = 1.0;
-            }
-        } else if p_count == 0 && n_count > 0 {
-            for j in begin..end {
-                dec_values[perm[j]] = -1.0;
-            }
-        } else {
-            let mut subparam = param.clone();
-            subparam.probability = false;
-            subparam.c = 1.0;
-            subparam.weight = vec![(1, cp), (-1, cn)];
-
-            let subprob = SvmProblem {
-                labels: sub_labels,
-                instances: sub_instances,
-            };
-            let submodel = svm_train(&subprob, &subparam);
-
-            for j in begin..end {
-                let mut dv = [0.0];
-                predict_values(&submodel, &prob.instances[perm[j]], &mut dv);
-                // Sign correction: ensure +1/−1 ordering
-                dec_values[perm[j]] = dv[0] * submodel.label[0] as f64;
+            for (j, prediction) in (begin..end).zip(predictions.into_iter()) {
+                dec_values[perm[j]] = prediction;
             }
         }
     }
