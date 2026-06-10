@@ -46,3 +46,20 @@
 - reference/ artifacts correctly reverted by coder; re-baseline deferred
 - Follow-up: re-run differential on macOS + re-baseline reference/ artifacts
   (CV-shuffle change affects mac splits) — new bead filed
+## libsvm-rs-jeh — SVR probability perf gap, round 2 (2026-06-10) — NEGATIVE RESULT
+- AC1 pre-edit baseline models captured: PASS (.sc/jeh-models-before/)
+- AC2 hot-path work: kernel.rs borrow-caching cleanup only — safe but
+  essentially perf-neutral (LLVM likely already did it); no justified
+  serial win found without algorithmic/cache redesign (out of scope)
+- AC3 bitwise guard: PASS — supervisor independently retrained housing+heart
+  post-change, cmp byte-identical to pre-edit baselines
+- AC4 benchmark target worst ≤1.15: NOT MET on this box (median 1.074,
+  worst 2.058 s1_t3_iris, 1.730 s3_t0_housing). Caveat: committed
+  benchmark_report.md is Mac-generated; no on-box before/after pair exists,
+  and post-4r5 fold splits differ — Linux ratios not comparable to the Mac
+  baseline. Coder's noise claim on tiny cases is [Unverified].
+- AC5 differential 240/0/0/10: PASS (re-checked from log)
+- AC6 fmt/clippy/tests: PASS (re-run by supervisor)
+- Verdict: documented-negative-result path accepted; serial-waste hypothesis
+  exhausted within scope. Path forward = rayon parallel CV (libsvm-rs-eo9).
+- Follow-up: per-platform benchmark baseline noted on libsvm-rs-dt3.

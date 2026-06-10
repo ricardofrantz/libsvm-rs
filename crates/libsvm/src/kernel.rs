@@ -37,12 +37,16 @@ pub fn dot(x: &[SvmNode], y: &[SvmNode]) -> f64 {
     let mut sum = 0.0;
     let mut ix = 0;
     let mut iy = 0;
-    while ix < x.len() && iy < y.len() {
-        if x[ix].index == y[iy].index {
-            sum += x[ix].value * y[iy].value;
+    let x_len = x.len();
+    let y_len = y.len();
+    while ix < x_len && iy < y_len {
+        let x_node = &x[ix];
+        let y_node = &y[iy];
+        if x_node.index == y_node.index {
+            sum += x_node.value * y_node.value;
             ix += 1;
             iy += 1;
-        } else if x[ix].index > y[iy].index {
+        } else if x_node.index > y_node.index {
             iy += 1;
         } else {
             ix += 1;
@@ -157,28 +161,27 @@ impl<'a> Kernel<'a> {
     /// Evaluate K(x\[i\], x\[j\]) using precomputed data where possible.
     #[inline]
     pub fn evaluate(&self, i: usize, j: usize) -> f64 {
+        let xi = self.x[i];
+        let xj = self.x[j];
         match self.kernel_type {
-            KernelType::Linear => dot(self.x[i], self.x[j]),
-            KernelType::Polynomial => powi(
-                self.gamma * dot(self.x[i], self.x[j]) + self.coef0,
-                self.degree,
-            ),
+            KernelType::Linear => dot(xi, xj),
+            KernelType::Polynomial => powi(self.gamma * dot(xi, xj) + self.coef0, self.degree),
             KernelType::Rbf => {
                 // Use precomputed x_square: ‖x_i - x_j‖² = x_sq[i] + x_sq[j] - 2*dot(x_i, x_j)
                 let val = if let Some(sq) = &self.x_square {
-                    sq[i] + sq[j] - 2.0 * dot(self.x[i], self.x[j])
+                    sq[i] + sq[j] - 2.0 * dot(xi, xj)
                 } else {
-                    sparse_sq_dist(self.x[i], self.x[j])
+                    sparse_sq_dist(xi, xj)
                 };
                 (-self.gamma * val).exp()
             }
-            KernelType::Sigmoid => (self.gamma * dot(self.x[i], self.x[j]) + self.coef0).tanh(),
+            KernelType::Sigmoid => (self.gamma * dot(xi, xj) + self.coef0).tanh(),
             // See the free-function kernel_function above for the safety note on the
             // float→usize cast: saturates on out-of-range values, .get() maps to None,
             // .map_or returns 0.0 (intentional, matches upstream; silent mis-map, no panic).
-            KernelType::Precomputed => self.x[j]
+            KernelType::Precomputed => xj
                 .first()
-                .and_then(|node| self.x[i].get(node.value as usize))
+                .and_then(|node| xi.get(node.value as usize))
                 .map_or(0.0, |n| n.value),
         }
     }
