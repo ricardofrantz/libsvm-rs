@@ -210,6 +210,7 @@ if let Some((label, probs)) = predict_probability(&model, &problem.instances[0])
 
 For structured, runnable example suites see:
 
+- `docs/MIGRATION.md` — migration guide for C LIBSVM and `libsvm-sys2` users
 - `examples/README.md` — index of all examples
 - `examples/basics/` — minimal starter examples
 - `examples/api/` — persistence, CV/grid-search, Iris workflow
