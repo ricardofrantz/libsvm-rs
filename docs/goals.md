@@ -1,62 +1,52 @@
-# Goal: Wire the rayon feature — parallel cross-validation folds   (bead: libsvm-rs-eo9)
+# Goal: wasm32 build check in CI for the core library   (bead: libsvm-rs-5yo)
 
 ## 1. Objective
-Cargo.toml declares an optional `rayon` dep but zero code uses it. Under
-`cfg(feature = "rayon")`, parallelize the fold loop in `svm_cross_validation`
-(cross_validation.rs) and the internal 5-fold CV in SVR probability training
-(probability.rs). Serial path stays the default and byte-identical to today.
-Full spec: `br show libsvm-rs-eo9`.
+Make wasm32 a checked target for the CORE crate. CI already has a
+`wasm-integration` job (ci.yml:168) that exercises the example module via
+run.sh — that covers the example, slowly. Missing: a fast, direct compile
+check `cargo build --locked -p libsvm-rs --target wasm32-unknown-unknown`
+(default features) so a core change that breaks wasm compat fails loudly.
+Full spec: `br show libsvm-rs-5yo`.
 
 ## 2. Acceptance Criteria
-- [ ] Fold ASSIGNMENT (shuffle/PRNG) stays on the serial path, computed before
-      any parallelism — fold membership identical with feature on/off. Folds
-      write to disjoint slices (indexed collection / par_chunks; no locks).
-- [ ] Bitwise-equality test (new tests/rayon_parity.rs or similar): CV results
-      identical via f64::to_bits, feature on vs off — heart_scale and
-      housing_scale; classification + SVR + probability. NOTE: the on/off halves
-      cannot run in one cargo invocation; pin expected to_bits snapshots that
-      both `--features rayon` and default test runs assert against, OR have the
-      gate script run the test under both feature sets and diff outputs.
-- [ ] No rayon in default tree: `cargo tree --no-default-features -e normal
-      --prefix none | grep -c rayon` == 0 (note `-e normal` — dev-deps don't count).
-- [ ] Print/quiet decision: parallel folds must not interleave per-fold training
-      output — suppress or buffer fold-internal prints under the rayon path and
-      document the choice in lib.rs docs. No interleaved garbage.
-- [ ] Memory note documented (README/lib.rs): k parallel folds = up to
-      min(k, threads) kernel caches of cache_size each; never silently divide it.
-- [ ] Docs: Cargo.toml [features] comment, lib.rs feature docs, README one
-      paragraph (opt-in, preserves zero-default-deps story).
-- [ ] CI: minimal addition to .github/workflows/ci.yml —
-      `cargo test --locked --features rayon` in the existing test job.
-- [ ] Informational: measured wall-clock speedup on 5-fold CV on this box
-      (any >1.5× on 4+ cores fine); record numbers in the CODER REPORT.
-- [ ] Gates: bash .sc/eo9.gate.sh green.
+- [ ] New small CI job (or step) in .github/workflows/ci.yml:
+      `rustup target add wasm32-unknown-unknown` (via dtolnay/rust-toolchain
+      `targets:` input, matching existing pins) then
+      `cargo build --locked -p libsvm-rs --target wasm32-unknown-unknown`.
+      Library only, default features. NOT bins, NOT --features rayon (threads).
+      Do NOT duplicate or modify the existing wasm-integration job.
+- [ ] Conventions: SHA-pinned actions identical to existing pins in ci.yml,
+      `persist-credentials: false`, `permissions: contents: read`,
+      Swatinem/rust-cache with a distinct cache key.
+- [ ] Local proof-of-teeth experiment (NOT committed): temporarily add an
+      `std::fs` call to lib.rs, show the wasm build command fails, revert.
+      Report the failing output snippet in the CODER REPORT.
+- [ ] README: one line/sentence noting wasm32-unknown-unknown is a CI-checked
+      build target for the core crate (extend an existing targets/CI line if
+      one exists).
+- [ ] Gates: bash .sc/5yo.gate.sh green (wasm build, fmt, clippy, default tests,
+      actionlint if installed — script skips it gracefully if absent).
 
 ## 3. Verification
-- Quick: `cargo test --locked --features rayon -p libsvm-rs cross_validation`
-- Full: `bash .sc/eo9.gate.sh` (fmt, clippy all-features -D warnings, test
-  matrix incl. no-default-features, dep-tree check, differential suite —
-  serial default path, counts must stay 240/0/0/10).
+- Quick: `cargo build --locked -p libsvm-rs --target wasm32-unknown-unknown`
+- Full: `bash .sc/5yo.gate.sh`
 
 ## 4. Scope
-✅ ALWAYS:    crates/libsvm/src/cross_validation.rs, probability.rs (fold-loop
-              parallelization only), lib.rs (cfg + docs), crates/libsvm/Cargo.toml
-              (feature comment), README.md (one paragraph),
-              .github/workflows/ci.yml (one test step), new parity test file
-⚠️ ASK FIRST: any change to fold-assignment logic or util.rs RNG, any pub API
-              signature change, parallelism anywhere besides the two fold loops
-🚫 NEVER:     solver.rs, kernel.rs, qmatrix.rs, train.rs internals, vendor/,
-              scripts/, reference/, io.rs, workspace root Cargo.toml deps
-
+✅ ALWAYS:    .github/workflows/ci.yml (one new job/step), README.md (one line)
+⚠️ ASK FIRST: any cfg change in crates/libsvm/src/ — ONLY if the core crate
+              does not compile for wasm32 today; report findings first if the
+              fix would touch solver/training logic (STOP-and-split rule)
+🚫 NEVER:     examples/, bins/, vendor/, scripts/, reference/, data/,
+              Cargo.toml deps, the existing wasm-integration job
 ## 5. Non-Goals / Constraints
-- Parallelism inside svm_train/solver is OUT — parity risk. Folds only.
-- Default (no-feature) build must compile the identical serial code.
+- No wasm test execution (wasm-pack test / node runners) — compile check only.
+- rustup target add locally is fine (already installed on this box, verify).
 
 ## 6. Context Pointers
-- `br show libsvm-rs-eo9` — full spec incl. determinism reasoning.
-- `VISION.md` point 4 (performance) — rayon stays opt-in.
-- util.rs c_rand/shuffle (4r5 work) — do not touch; assignment uses it serially.
+- `br show libsvm-rs-5yo` — full spec incl. conventions reasoning.
+- Existing ci.yml jobs for pin hashes and permissions patterns.
+- VISION.md — WASM inference is a named deployment target.
 
 ## 7. Stop Conditions
-- DONE when criteria pass. STOP if bitwise on/off parity cannot be achieved or
-  an ⚠️ item is needed.
+- DONE when criteria pass. STOP if the core crate fails to compile for wasm32
+  in a way that needs more than tiny cfg gating.
