@@ -30,3 +30,12 @@ examples/integrations/wasm_inference/output/*
 !examples/integrations/wasm_inference/output/results.json
 !examples/integrations/wasm_inference/output/report.md
 !examples/integrations/wasm_inference/output/wasm_vs_cpp.png
+
+# Beads (local-only planning, per user decision 2026-06-10)
+/.beads/
+
+# bv (beads viewer) local config and caches
+.bv/
+
+# supervisor-coder dispatch artifacts
+/.sc/
