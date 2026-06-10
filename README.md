@@ -120,7 +120,7 @@ controlled.
 - **Model file compatibility**: reads and writes LIBSVM text format at `%.17g` precision, so a model trained with the C library loads in Rust and vice versa
 - **Optional serde support**: enable the `serde` feature to serialize `SvmModel`/`SvmParameter` inside a Rust application's own state (for example JSON or bincode). Deserialization reuses the model validation boundary, but this is not a C/LIBSVM interchange format; use `save_model`/`load_model` text files for compatibility with other LIBSVM tools.
 - **Probability estimation** (`-b 1`): Platt scaling for binary classification, pairwise coupling for multiclass, Laplace-corrected regression, density marks for one-class
-- **Cross-validation**: stratified k-fold for classification (preserves class proportions), simple k-fold for regression and one-class
+- **Cross-validation**: stratified k-fold for classification (preserves class proportions), simple k-fold for regression and one-class. Enable the optional `rayon` feature to train CV folds in parallel while keeping fold assignment serial and deterministic; default builds still avoid the `rayon` dependency. Parallel fold diagnostics are suppressed to avoid interleaved output. Peak memory can include up to `min(k, rayon_threads)` simultaneous kernel caches of `SvmParameter::cache_size` each; the cache size is never silently divided.
 - **CLI tools**: `svm-train-rs`, `svm-predict-rs`, `svm-scale-rs`, matching upstream flag syntax
 
 ## Installation
@@ -774,7 +774,7 @@ Coverage metrics: 93.19% line coverage, 92.86% function coverage (library crate)
 ## Dependencies
 
 - **Runtime**: `thiserror` (error derive macros)
-- **Optional**: `rayon` (feature-gated, for future parallel cross-validation)
+- **Optional**: `rayon` (feature-gated, for opt-in parallel cross-validation)
 - **Dev**: `float-cmp` (approximate float comparison), `criterion` (benchmarks), `proptest` (property-based testing)
 
 ## Known Limitations

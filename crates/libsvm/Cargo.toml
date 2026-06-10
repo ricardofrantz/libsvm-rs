@@ -21,6 +21,7 @@ serde = { version = "1", features = ["derive"], optional = true }
 default = []
 # Enable serde Serialize/Deserialize for model and parameter types. Serialized enums use LIBSVM integer codes.
 serde = ["dep:serde"]
+# Opt-in parallel cross-validation folds; default builds keep the zero-rayon dependency tree.
 rayon = ["dep:rayon"]
 
 [dependencies.rayon]

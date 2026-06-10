@@ -83,3 +83,20 @@
   move (workaround for the buggy gate; would have made `cargo bench` a
   silent no-op without --features bench); criterion restored as dev-dep.
 - Follow-ups: none
+## libsvm-rs-eo9 — rayon parallel CV folds (2026-06-10)
+- AC fold assignment serial + disjoint slice writes: PASS (split_at_mut fold
+  slices, perm computed before par_iter; reviewed by supervisor + Codex)
+- AC bitwise parity test: PASS after supervisor TOUCH-UP — coder's pinned
+  digests were Linux-glibc-specific and would break macOS/Windows CI
+  (build-matrix runs --all-features tests); digest asserts now
+  cfg(target_os="linux"), both code paths still exercised everywhere
+- AC no rayon in default tree (-e normal == 0): PASS
+- AC quiet/print: PASS — with_suppressed_info depth guard, documented in lib.rs
+- AC memory note + docs + CI step: PASS
+- DEVIATION accepted: probability-mode outer folds stay serial — probability
+  training consumes the shared c_rand stream, parallel would break determinism
+  (Codex concurs). probability.rs internal CV untouched → follow-up filed.
+- Gates: .sc/eo9.gate.sh GATE_EXIT=0 (supervisor re-run); full differential
+  240/0/0/10 from coder log [coder-reported]; speedup ~1.98× on 5-fold CV.
+- TOUCH-UP 2: restored reference/ + data/generated/ artifacts overwritten by
+  supervisor's quick-scope gate run (Codex P2 — self-inflicted, not coder).

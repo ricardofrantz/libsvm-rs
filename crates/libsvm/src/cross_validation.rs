@@ -8,6 +8,8 @@ use crate::predict::{predict, predict_probability};
 use crate::train::svm_train;
 use crate::types::{SvmModel, SvmNode, SvmParameter, SvmProblem, SvmType};
 use crate::util::{group_classes, shuffle_range};
+#[cfg(feature = "rayon")]
+use rayon::prelude::*;
 
 fn predict_cv_target(model: &SvmModel, param: &SvmParameter, x: &[SvmNode]) -> f64 {
     if param.probability && matches!(param.svm_type, SvmType::CSvc | SvmType::NuSvc) {
@@ -29,6 +31,44 @@ fn fold_starts(fold_count: &[usize]) -> Vec<usize> {
 
 fn is_stratified_cv(param: &SvmParameter, nr_fold: usize, l: usize) -> bool {
     matches!(param.svm_type, SvmType::CSvc | SvmType::NuSvc) && nr_fold < l
+}
+
+fn evaluate_fold(
+    prob: &SvmProblem,
+    param: &SvmParameter,
+    perm: &[usize],
+    begin: usize,
+    end: usize,
+) -> Vec<f64> {
+    let l = prob.labels.len();
+
+    // Build sub-problem excluding held-out [begin..end)
+    let sub_l = l - (end - begin);
+    let mut sub_labels = Vec::with_capacity(sub_l);
+    let mut sub_instances = Vec::with_capacity(sub_l);
+
+    for &pi in &perm[..begin] {
+        sub_labels.push(prob.labels[pi]);
+        sub_instances.push(prob.instances[pi].clone());
+    }
+    for &pi in &perm[end..l] {
+        sub_labels.push(prob.labels[pi]);
+        sub_instances.push(prob.instances[pi].clone());
+    }
+
+    let subprob = SvmProblem {
+        labels: sub_labels,
+        instances: sub_instances,
+    };
+
+    #[cfg(feature = "rayon")]
+    let submodel = crate::with_suppressed_info(|| svm_train(&subprob, param));
+    #[cfg(not(feature = "rayon"))]
+    let submodel = svm_train(&subprob, param);
+
+    (begin..end)
+        .map(|j| predict_cv_target(&submodel, param, &prob.instances[perm[j]]))
+        .collect()
 }
 
 // ─── Public API ──────────────────────────────────────────────────────
@@ -127,33 +167,58 @@ pub fn svm_cross_validation(
     // ── Evaluate each fold ───────────────────────────────────────
     let mut target = vec![0.0; l];
 
-    for i in 0..nr_fold {
-        let begin = fold_start[i];
-        let end = fold_start[i + 1];
+    #[cfg(feature = "rayon")]
+    {
+        if param.probability {
+            // Probability training performs its own deterministic CV shuffles.
+            // Keep this outer loop serial so the shared LIBSVM-compatible PRNG
+            // is consumed in the same order as the default build.
+            for i in 0..nr_fold {
+                let begin = fold_start[i];
+                let end = fold_start[i + 1];
+                let predictions = evaluate_fold(prob, param, &perm, begin, end);
 
-        // Build sub-problem excluding held-out [begin..end)
-        let sub_l = l - (end - begin);
-        let mut sub_labels = Vec::with_capacity(sub_l);
-        let mut sub_instances = Vec::with_capacity(sub_l);
+                for (j, prediction) in (begin..end).zip(predictions.into_iter()) {
+                    target[perm[j]] = prediction;
+                }
+            }
+        } else {
+            let mut target_in_permuted_order = vec![0.0; l];
+            let mut fold_slices = Vec::with_capacity(nr_fold);
+            let mut remaining = target_in_permuted_order.as_mut_slice();
+            for i in 0..nr_fold {
+                let fold_len = fold_start[i + 1] - fold_start[i];
+                let (fold_slice, rest) = remaining.split_at_mut(fold_len);
+                fold_slices.push(fold_slice);
+                remaining = rest;
+            }
 
-        for &pi in &perm[..begin] {
-            sub_labels.push(prob.labels[pi]);
-            sub_instances.push(prob.instances[pi].clone());
+            fold_slices
+                .into_par_iter()
+                .enumerate()
+                .for_each(|(i, fold_target)| {
+                    let begin = fold_start[i];
+                    let end = fold_start[i + 1];
+                    let predictions = evaluate_fold(prob, param, &perm, begin, end);
+                    fold_target.copy_from_slice(&predictions);
+                });
+
+            for (prediction, &original_idx) in target_in_permuted_order.iter().zip(perm.iter()) {
+                target[original_idx] = *prediction;
+            }
         }
-        for &pi in &perm[end..l] {
-            sub_labels.push(prob.labels[pi]);
-            sub_instances.push(prob.instances[pi].clone());
-        }
+    }
 
-        let subprob = SvmProblem {
-            labels: sub_labels,
-            instances: sub_instances,
-        };
-        let submodel = svm_train(&subprob, param);
+    #[cfg(not(feature = "rayon"))]
+    {
+        for i in 0..nr_fold {
+            let begin = fold_start[i];
+            let end = fold_start[i + 1];
+            let predictions = evaluate_fold(prob, param, &perm, begin, end);
 
-        // Predict held-out
-        for j in begin..end {
-            target[perm[j]] = predict_cv_target(&submodel, param, &prob.instances[perm[j]]);
+            for (j, prediction) in (begin..end).zip(predictions.into_iter()) {
+                target[perm[j]] = prediction;
+            }
         }
     }
 
