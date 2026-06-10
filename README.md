@@ -8,7 +8,7 @@ command-line tools as upstream.
 The aim is numerical equivalence, not bitwise identity. A verification pipeline
 checks this implementation against a pinned upstream LIBSVM build across
 classification, regression, one-class, probability, and precomputed-kernel
-cases.
+cases, and CI compile-checks the core crate for `wasm32-unknown-unknown`.
 
 [![Crates.io](https://img.shields.io/crates/v/libsvm-rs.svg)](https://crates.io/crates/libsvm-rs)
 [![Documentation](https://docs.rs/libsvm-rs/badge.svg)](https://docs.rs/libsvm-rs)

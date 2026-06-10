@@ -100,3 +100,16 @@
   240/0/0/10 from coder log [coder-reported]; speedup ~1.98× on 5-fold CV.
 - TOUCH-UP 2: restored reference/ + data/generated/ artifacts overwritten by
   supervisor's quick-scope gate run (Codex P2 — self-inflicted, not coder).
+## libsvm-rs-5yo — wasm32 build check in CI (2026-06-10)
+- AC new wasm-core CI job: PASS — checkout/toolchain/cache SHAs identical to
+  existing pins, persist-credentials false, distinct cache key wasm32-core,
+  workflow-level permissions contents:read inherited; library-only, default
+  features; existing wasm-integration job untouched
+- AC proof-of-teeth: PASS — coder's temporary std::os::unix probe failed the
+  wasm build (E0433/E0599 snippet in report), reverted; tree shows 2 files only
+- AC README one sentence: PASS
+- Gates: .sc/5yo.gate.sh GATE_EXIT=0 (supervisor re-run; actionlint absent,
+  skipped gracefully). Core crate compiles for wasm32 with zero cfg changes.
+- Brief correction vs bead: bead background was stale (wasm-integration job
+  already exists); scope narrowed to the direct core compile check.
+- Follow-ups: none
