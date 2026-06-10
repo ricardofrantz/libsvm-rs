@@ -1,52 +1,63 @@
-# Goal: wasm32 build check in CI for the core library   (bead: libsvm-rs-5yo)
+# Goal: Parallelize binary-SVC probability internal fold trainings   (bead: libsvm-rs-aud)
 
 ## 1. Objective
-Make wasm32 a checked target for the CORE crate. CI already has a
-`wasm-integration` job (ci.yml:168) that exercises the example module via
-run.sh — that covers the example, slowly. Missing: a fast, direct compile
-check `cargo build --locked -p libsvm-rs --target wasm32-unknown-unknown`
-(default features) so a core change that breaks wasm compat fails loudly.
-Full spec: `br show libsvm-rs-5yo`.
+Finish the rayon story from eo9. SUPERVISOR SCOPE NARROWING vs the bead text:
+`svm_svr_probability` already calls `svm_cross_validation` with
+`probability=false`, so it already takes eo9's parallel branch — DO NOT touch
+it. The only remaining serial CV is `svm_binary_svc_probability`
+(probability.rs:218): Fisher-Yates shuffle (serial, c_rand) then 5 folds, each
+training rand-free (`subparam.probability = false`) and writing to disjoint
+`dec_values[perm[j]]` indices. Parallelize that fold loop under
+`cfg(feature = "rayon")`. Full bead: `br show libsvm-rs-aud`.
 
 ## 2. Acceptance Criteria
-- [ ] New small CI job (or step) in .github/workflows/ci.yml:
-      `rustup target add wasm32-unknown-unknown` (via dtolnay/rust-toolchain
-      `targets:` input, matching existing pins) then
-      `cargo build --locked -p libsvm-rs --target wasm32-unknown-unknown`.
-      Library only, default features. NOT bins, NOT --features rayon (threads).
-      Do NOT duplicate or modify the existing wasm-integration job.
-- [ ] Conventions: SHA-pinned actions identical to existing pins in ci.yml,
-      `persist-credentials: false`, `permissions: contents: read`,
-      Swatinem/rust-cache with a distinct cache key.
-- [ ] Local proof-of-teeth experiment (NOT committed): temporarily add an
-      `std::fs` call to lib.rs, show the wasm build command fails, revert.
-      Report the failing output snippet in the CODER REPORT.
-- [ ] README: one line/sentence noting wasm32-unknown-unknown is a CI-checked
-      build target for the core crate (extend an existing targets/CI line if
-      one exists).
-- [ ] Gates: bash .sc/5yo.gate.sh green (wasm build, fmt, clippy, default tests,
-      actionlint if installed — script skips it gracefully if absent).
+- [ ] Shuffle stays serial, before any parallelism. Under rayon, the 5 fold
+      bodies run via par_iter; each fold returns its (begin..end) predictions
+      and they are scattered to dec_values afterward (or disjoint-slice
+      pattern in permuted order, as eo9 did in cross_validation.rs). The
+      degenerate one-class-count branches (0.0 / 1.0 / -1.0 fills) are part of
+      the fold body and must move with it.
+- [ ] Fold-internal training output suppressed under rayon via the existing
+      `with_suppressed_info` (lib.rs) — same rationale as eo9.
+- [ ] Serial path (no feature) byte-identical to today — same code or pure
+      refactor extraction, mirroring eo9's evaluate_fold pattern.
+- [ ] BITWISE REGRESSION GATE: the four pinned digests in
+      tests/rayon_parity.rs must NOT change — run that test with and without
+      `--features rayon`; both green proves parallel == serial bitwise.
+      Do not regenerate or edit the pinned digest constants.
+- [ ] lib.rs rayon feature doc: one sentence extension (probability CV folds
+      also parallel). No README change needed.
+- [ ] Informational: wall-clock before/after for probability CV on heart_scale
+      (e.g. time the rayon_parity probability cases or a small bench command);
+      report numbers in the CODER REPORT.
+- [ ] Gates: bash .sc/aud.gate.sh green.
 
 ## 3. Verification
-- Quick: `cargo build --locked -p libsvm-rs --target wasm32-unknown-unknown`
-- Full: `bash .sc/5yo.gate.sh`
+- Quick: `cargo test --locked --features rayon --test rayon_parity`
+          and `cargo test --locked --test rayon_parity`
+- Full: `bash .sc/aud.gate.sh` (fmt, clippy -D warnings, rayon/all/no-default
+  test matrix, rayon-absent-from-default-tree, quick differential suite —
+  must stay 45/0/0/0; restore reference/ + data/generated/ if the suite
+  rewrites them: `git checkout -- reference/ data/generated/`).
 
 ## 4. Scope
-✅ ALWAYS:    .github/workflows/ci.yml (one new job/step), README.md (one line)
-⚠️ ASK FIRST: any cfg change in crates/libsvm/src/ — ONLY if the core crate
-              does not compile for wasm32 today; report findings first if the
-              fix would touch solver/training logic (STOP-and-split rule)
-🚫 NEVER:     examples/, bins/, vendor/, scripts/, reference/, data/,
-              Cargo.toml deps, the existing wasm-integration job
+✅ ALWAYS:    crates/libsvm/src/probability.rs (svm_binary_svc_probability fold
+              loop only), crates/libsvm/src/lib.rs (one doc sentence)
+⚠️ ASK FIRST: any change to shuffle logic, sigmoid_train, predict_values
+              call shape, or tests/rayon_parity.rs beyond running it
+🚫 NEVER:     svm_svr_probability, svm_one_class_probability, solver/kernel/
+              qmatrix/train internals, cross_validation.rs, util.rs, vendor/,
+              scripts/, reference/, data/, Cargo.toml, ci.yml, README.md
+
 ## 5. Non-Goals / Constraints
-- No wasm test execution (wasm-pack test / node runners) — compile check only.
-- rustup target add locally is fine (already installed on this box, verify).
+- No new tests required — rayon_parity's pinned digests are the regression net.
+- No parallelism anywhere else; nested rayon (outer serial, inner parallel) is
+  the intended shape when called from cross_validation's probability branch.
 
 ## 6. Context Pointers
-- `br show libsvm-rs-5yo` — full spec incl. conventions reasoning.
-- Existing ci.yml jobs for pin hashes and permissions patterns.
-- VISION.md — WASM inference is a named deployment target.
+- eo9 diff in cross_validation.rs — the evaluate_fold + disjoint-slice pattern.
+- `br show libsvm-rs-aud`, lib.rs `with_suppressed_info`.
 
 ## 7. Stop Conditions
-- DONE when criteria pass. STOP if the core crate fails to compile for wasm32
-  in a way that needs more than tiny cfg gating.
+- DONE when criteria pass. STOP if any pinned digest changes (that means a
+  determinism break — do not re-pin) or an ⚠️ item is needed.
