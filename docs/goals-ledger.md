@@ -127,3 +127,18 @@
 - Scope note: SVR side needed nothing — svm_svr_probability already routes
   through eo9's parallel branch (probability=false); brief narrowed the bead.
 - Follow-ups: none
+## libsvm-rs-dt3 — re-baseline differential artifacts on macOS (2026-06-10)
+- Supervisor-driven cycle (user-approved): no coder; Mac had NO checkout —
+  fresh clone to ~/Projects/libsvm-rs (symlink → Documents/projects.nosync);
+  local master rebased onto origin (+1 Mac benchmark commit) and pushed first.
+- AC full suite exit 0 on macOS: PASS — 237/3/0/10 (was 236/4/0/10); warn
+  resolved: gen_regression_sparse_scale_s4_t3_tuned probA drift now under
+  threshold post CV-shuffle alignment. fail=0. report == json summary.
+- AC artifacts regenerated + committed: PASS — also provenance/build files:
+  Apple clang 17→21, new C-binary SHAs (pinned v337 commit unchanged);
+  parity improved under the newer compiler.
+- AC README per-platform parity table (macOS 237/3/0/10, Linux 240/0/0/10): PASS
+- AC tolerance_policy.md per-platform baselines + benchmark note (Mac-generated
+  bench artifacts; Linux train_probability median 1.074 / worst 2.058): PASS
+- Diff confined to reference/ + README.md: PASS
+- Follow-ups: none

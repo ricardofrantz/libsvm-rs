@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-02-11T13:56:06Z",
+  "generated_utc": "2026-06-10T19:13:22Z",
   "scope": "full",
   "tolerance_policy": {
     "name": "differential-v3",
@@ -37,8 +37,8 @@
   },
   "summary": {
     "total": 250,
-    "pass": 236,
-    "warn": 4,
+    "pass": 237,
+    "warn": 3,
     "fail": 0,
     "skip": 10
   },
@@ -2478,8 +2478,8 @@
       "svm_type": 4,
       "kernel": 3,
       "profile": "tuned",
-      "status": "warn",
-      "reason": "probability model header differs: key probA[1]: c=0.7497096856615137 rust=0.7979901046262288 diff=4.828e-02 rel=6.050e-02 > threshold=4.788e-02"
+      "status": "pass",
+      "reason": "all checked comparisons passed"
     },
     {
       "id": "gen_regression_sparse_scale_precomputed_s2_t4_default",

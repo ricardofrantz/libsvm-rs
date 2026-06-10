@@ -10,6 +10,21 @@ Define auditable comparison rules for Rust-vs-C LIBSVM differential verification
 Differential baselines are recorded per platform; libc `rand()` replication exists
 for macOS and Linux.
 
+## Current Per-Platform Baselines
+
+Full-scope suite (250 configurations), post CV-shuffle alignment to the
+process-global libc `rand()` replica (2026-06-10):
+
+| Platform | Pass | Warn | Fail | Skip | Notes |
+|---|---:|---:|---:|---:|---|
+| macOS (arm64, Apple clang 21) | 237 | 3 | 0 | 10 | committed artifacts (`differential_report.md`, `differential_results.json`) |
+| Linux (x86_64, pop-os) | 240 | 0 | 0 | 10 | counts recorded from the same-day full run; artifacts not committed |
+
+Benchmark baselines are also per platform: `benchmark_report.md` /
+`benchmark_results.json` are macOS-generated. The Linux (pop-os) full bench
+reference point: `train_probability` ratio median 1.074 / worst 2.058
+(small cases).
+
 ## Hard-Fail Rules
 
 1. Any training/prediction command success mismatch between C and Rust.

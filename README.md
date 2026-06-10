@@ -58,9 +58,10 @@ roughly even, and probability training is sometimes slower. See
 
 Current full differential suite against pinned upstream LIBSVM v337:
 
-| Scope | Pass | Warn | Fail | Skip |
+| Platform (250 configurations) | Pass | Warn | Fail | Skip |
 |---|---:|---:|---:|---:|
-| 250 configurations | 236 | 4 | 0 | 10 |
+| macOS (arm64) | 237 | 3 | 0 | 10 |
+| Linux (x86_64) | 240 | 0 | 0 | 10 |
 
 The warnings are documented numerical near-parity cases, not prediction-logic
 failures. Differential baselines are recorded per platform; libc `rand()`
