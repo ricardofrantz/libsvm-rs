@@ -53,6 +53,7 @@ pub(crate) fn info(msg: &str) {
     }
 }
 
+pub mod builder;
 pub mod cache;
 pub mod error;
 pub mod io;
@@ -68,6 +69,7 @@ pub mod cross_validation;
 pub mod predict;
 pub mod probability;
 
+pub use builder::SvmParameterBuilder;
 pub use error::SvmError;
 pub use io::LoadOptions;
 pub use metrics::{accuracy_percentage, regression_metrics};
