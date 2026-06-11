@@ -1,28 +1,31 @@
-# Goal: Merge dependabot PRs + migrate master→main   (bead: libsvm-rs-4bd)
+# Goal: libsvm-rs-cww — Fresh security audit; rewrite SECURITY_AUDIT.md
 
-SUPERVISOR-DRIVEN CYCLE (user-directed 2026-06-11): all steps are gh/push
-operations; no coder dispatch. User explicitly asked to MERGE (take) the 5
-dependabot PRs and rename master→main.
+Supervisor-driven cycle (user requested Fable 5 authorship of the audit report).
+Method mirrors the 2026-06-02 audit: 4 parallel read-only reviewer lanes +
+coordinator (supervisor) reproduction of every finding before it enters the report.
 
-## 1. Steps
-1. Merge PRs #4, #5, #3, #1 (squash). After #1: add explicit
-   `toolchain: 1.75.0` to the MSRV job (ci.yml:93) — PR #1 repoints the
-   1.75.0 tag SHA to the stable tag SHA, which would silently change the
-   MSRV job's toolchain (dtolnay tag commits encode the toolchain).
-   Fuzz + dynamic-matrix jobs already pass explicit `toolchain:` inputs.
-2. Merge PR #2 (criterion 0.5.1→0.8.2, major); pull; `cargo bench --no-run`
-   — fix bench compile breaks if any (criterion 0.8 API).
-3. Update workflow branch refs master→main (ci.yml:5,7; gitleaks.yml:5,7;
-   fuzz.yml:5; scientific-demo-benchmark-scheduled.yml:13); grep residuals.
-4. `git branch -m master main && git push -u origin main`; switch GitHub
-   default via API; `git push origin --delete master`;
-   `git remote set-head origin -a`.
-5. Confirm CI green on main.
+## Reviewer lanes (read-only)
+1. serde surface: derive/impls on SvmModel/SvmParameter vs text-parser invariants
+   (validate_model_header parity, caps bypass via serde_json::from_str).
+2. rayon paths: CV folds + probability fold trainings — panic safety, determinism,
+   shared state.
+3. Regression: F1–F6 fixes intact; SvmParameterBuilder validation parity with
+   svm_check_parameter.
+4. Supply chain: deny.toml, workflow SHA pinning, toolchain pin, fuzz coverage of
+   serde surface.
 
-## 2. Acceptance Criteria
-- [ ] All 5 dependabot PRs merged (not closed); branches gone.
-- [ ] MSRV job still checks 1.75.0 explicitly.
-- [ ] Benches compile under criterion 0.8.
-- [ ] Default branch is main; no stale master refs in workflows/docs;
-      old master branch deleted.
-- [ ] CI green on main end-to-end.
+## Acceptance criteria
+- SECURITY_AUDIT.md rewritten: current date + audited commit on main, covers
+  serde/rayon/builder/LCG surfaces, findings marked [Verified]/[Reviewer].
+- Actionable findings fixed-with-regression-test here or filed as bug beads
+  blocking libsvm-rs-2wg.
+- ≥1 adversarial serde input test passing by REJECTION (not panic).
+- `cargo test --workspace --all-features` green.
+
+## Verification
+`cargo test --workspace --all-features 2>&1 | tail -5` + audit diff read.
+
+## Scope
+✅ SECURITY_AUDIT.md; if fixes needed: crates/libsvm/src/{io.rs,probability.rs,
+cross_validation.rs,train.rs,parameter,serde sites}, fuzz/, tests/.
+🚫 tolerance files, reference/ artifacts, CI workflows.
