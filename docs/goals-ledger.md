@@ -160,3 +160,5 @@ after 4 impl: commits. No per-bead confirmation needed.
 - wasm-integration job checked: not affected — run.sh:31 already adds the target.
 - Quick gate: local `cargo build --locked -p libsvm-rs --target wasm32-unknown-unknown` EXIT=0.
 - Full gate PENDING: CI green requires a push to master — awaiting user OK.
+- Full gate CONFIRMED post-push: CI run 27327338121 success (incl. WASM Core
+  Build); Fuzz 27327338138 success. Bead closed.
