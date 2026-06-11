@@ -162,3 +162,17 @@ after 4 impl: commits. No per-bead confirmation needed.
 - Full gate PENDING: CI green requires a push to master — awaiting user OK.
 - Full gate CONFIRMED post-push: CI run 27327338121 success (incl. WASM Core
   Build); Fuzz 27327338138 success. Bead closed.
+
+## libsvm-rs-4bd — merge dependabot PRs + master→main (2026-06-11)
+- Supervisor-driven cycle. All 6 dependabot PRs MERGED (#1-#5 + #6 serde_json
+  1.0.150, opened post-migration). Zero open PRs; main is the only branch.
+- PR #1 correction: MSRV job given explicit `toolchain: 1.75.0` (dtolnay tag
+  SHAs encode the toolchain; repoint would have silently run stable).
+- criterion 0.5→0.8.2: benches compile; criterion::black_box deprecation broke
+  Lint + build-matrix under -D warnings — fixed via std::hint::black_box
+  (commit 5642e4a). Local clippy -D warnings + fmt --check clean.
+- master→main: workflows updated (ci/gitleaks/fuzz filters, scheduled
+  benchmark ref guard), default branch switched, master deleted, origin/HEAD
+  repointed. README badges branch-agnostic.
+- PENDING at session stop: CI run 27331635949 + Fuzz 27331635935 on main
+  (bench fix) — close bead when green.
