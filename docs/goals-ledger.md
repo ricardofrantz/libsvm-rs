@@ -151,3 +151,12 @@ dependabot cleanup) · cww (security audit) · 80n (CHANGELOG) · wa5 (README) �
 Stop conditions: BEFORE the publish/tag/push step of libsvm-rs-2wg (explicit
 user OK required); standard BLOCKED / Ask-first stops. /clear checkpoint
 after 4 impl: commits. No per-bead confirmation needed.
+
+## libsvm-rs-vbx — fix WASM Core Build CI job (2026-06-11)
+- Supervisor micro-cycle (one-line fix, no coder dispatch).
+- AC pin-independent fix: PASS — added `rustup target add wasm32-unknown-unknown`
+  step before the build in wasm-core; no hardcoded toolchain version.
+- AC diff confined to ci.yml: PASS (1 insertion).
+- wasm-integration job checked: not affected — run.sh:31 already adds the target.
+- Quick gate: local `cargo build --locked -p libsvm-rs --target wasm32-unknown-unknown` EXIT=0.
+- Full gate PENDING: CI green requires a push to master — awaiting user OK.
