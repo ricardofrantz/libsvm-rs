@@ -221,3 +221,14 @@ after 4 impl: commits. No per-bead confirmation needed.
   Accepted: known rustdoc limitation for cfg_attr derives (same as serde
   ecosystem norm); fixing needs manual impls — out of docs-only scope.
 - Follow-ups: none filed (P2 recorded above as accepted).
+
+## libsvm-rs-4pz — semver-checks vs published 0.8.1 (2026-06-11)
+- Supervisor-driven (tool run, read-only). cargo-semver-checks installed
+  --locked from crates.io.
+- AC tool completes vs 0.8.1 baseline, zero untriaged findings: PASS —
+  default features AND --all-features: 196 checks, 196 pass, 57 skip,
+  "no semver update required", exit 0. No findings to triage.
+- AC outcome as br comment: PASS (posted; includes glibc-rand caveat).
+- Note: user committed banner v2 work mid-session (d4010c1) — README/assets
+  no longer dirty; wa5 unblocked.
+- Follow-ups: none.
