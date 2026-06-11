@@ -7,10 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `SvmParameterBuilder` provides idiomatic construction-time validation for
+  parameters, using the same checks as `svm_check_parameter`.
+- Optional `serde` support for `SvmModel` and `SvmParameter`, with LIBSVM's
+  integer enum codes preserved and the text model format remaining canonical.
+- Optional `rayon` support for parallel cross-validation folds and parallel
+  probability-estimation fold training.
+- CI now verifies that the core library builds for `wasm32-unknown-unknown`.
+
+### Changed
+
+- Linux probability estimation and probability cross-validation now replicate
+  glibc `rand()` for the stratified shuffle, restoring C LIBSVM parity; Linux
+  users of probability estimation or cross-validation should expect outputs to
+  differ from 0.8.1 by design.
+- The default repository branch is now `main`; downstream links, badges, clone
+  commands, and automation that referenced `master` should be updated.
+- Differential reference artifacts were re-baselined on macOS, and benchmark and
+  integration demo artifacts were refreshed.
+- Development tooling and CI pins were refreshed, including the Node 24 GitHub
+  Actions runtime and current benchmark/dependency updates.
+
+### Fixed
+
+- The WebAssembly core-library CI job now installs the `wasm32-unknown-unknown`
+  target for the pinned Rust toolchain before building.
+- Benchmark CI now uses static, least-privilege permissions and the Criterion
+  benchmark harness uses `std::hint::black_box` with current Criterion releases.
+
 ### Security
+
 - Reject negative `gamma` for polynomial/RBF/sigmoid kernels at model load
   (text and serde paths); refreshed security audit covering the serde,
   rayon, builder, and PRNG surfaces (`SECURITY_AUDIT.md`).
+
+### Documentation
+
+- Added a migration guide for moving C LIBSVM and `libsvm-sys2` workflows to
+  `libsvm-rs`.
+- Added `VISION.md` and refreshed README, reference, and performance notes for
+  the 0.9.0 release line.
 
 ## [0.8.1] - 2026-06-02
 
@@ -206,7 +244,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Parameter validation with ν-SVC feasibility check
 - 38 tests
 
-[Unreleased]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.5.1...v0.6.0

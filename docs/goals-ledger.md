@@ -192,3 +192,15 @@ after 4 impl: commits. No per-bead confirmation needed.
   panic unwinds, local buffer dropped, caller sees nothing partial (S5).
 - F1-F6 re-verified intact; builder has no gaps vs svm_check_parameter.
 - Follow-ups: none (serde fuzz target recorded as S4 nice-to-have).
+
+## libsvm-rs-80n — CHANGELOG 0.9.0 entry (2026-06-11)
+- Coder cycle (pi goal loop, exit 0); diff confined to CHANGELOG.md.
+- AC every v0.8.1..HEAD commit (47) represented or consciously excluded: PASS —
+  supervisor spot-checked VISION.md/MIGRATION.md/benchmark-permissions/wasm/
+  black_box claims against git log; goal-loop/ledger/dependabot folded.
+- AC explicit Linux probability Changed bullet (why + who + by-design): PASS.
+- AC Keep-a-Changelog grouping, no hashes/bead IDs, style match: PASS; also
+  fixed the [Unreleased] compare link base v0.8.0→v0.8.1.
+- Pre-existing Security subsection merged intact.
+- Coder respected the do-not-touch list (README/assets banner work untouched).
+- Follow-ups: none.
