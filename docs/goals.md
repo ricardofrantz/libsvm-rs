@@ -1,46 +1,42 @@
-# Goal: libsvm-rs-wa5 — README accuracy pass for 0.9.0
+# Goal: libsvm-rs-9dt — bump MSRV to 1.80 (rayon feature requires it)
 
-Audit the ENTIRE README.md (814 lines) against the current tree and fix drift.
-Accuracy pass, not a redesign — do NOT restructure sections wholesale.
+Decision (user-confirmed): set rust-version = "1.80" workspace-wide; fix the CI
+MSRV job so it tests with the matching cargo and fails honestly; document the
+change.
 
 ## Tasks
-1. Features section: document every flag in crates/libsvm/Cargo.toml [features]
-   (`serde`, `rayon`) — what each enables; default = [] keeps the single
-   runtime dep (thiserror only).
-2. Quick Start: show the SvmParameterBuilder API alongside (or instead of) raw
-   SvmParameter struct literals; keep one direct-struct example (still public API).
-3. Link docs/MIGRATION.md prominently in the "How this differs"/"When to Use It"
-   area — a migrating libsvm-sys2 user must find it in one hop.
-4. Parity Status + Performance numbers: cross-check EVERY number against the
-   CURRENT committed artifacts: reference/compare_summary.json (now
-   65 pass / 0 fail / 29 warn / 5 skip), reference/differential_report.md,
-   reference/benchmark_report.md. Never carry stale figures or invent numbers.
-5. Security Considerations: reflect the refreshed SECURITY_AUDIT.md (2026-06-11,
-   serde/rayon/builder/LCG surfaces; negative-gamma load fix).
-6. Installation snippet: keep current exact published version (0.8.1) and leave
-   a note line for the release bead to bump (no TODO markers in shipped prose).
-7. MSRV caveat: rust-version is 1.75, but the `rayon` feature currently needs
-   rustc 1.80 (rayon-core 1.13) — if README states MSRV, say this honestly
-   (open bug libsvm-rs-9dt; do not resolve it here).
-8. Humanize changed prose: plain, factual, no AI-slop (no "blazingly fast",
-   no triads, no marketing flourish). Match the existing README voice.
+1. Cargo.toml (workspace root): rust-version = "1.80".
+2. .github/workflows/ci.yml MSRV job: rename to "MSRV (1.80.0)", toolchain
+   1.80.0 (update the dtolnay/rust-toolchain ref comment AND the `toolchain:`
+   input; keep the action SHA-pinned — if the pinned SHA encodes the version
+   tag, point the ref at the 1.80.0 tag's SHA, verifiable via
+   `gh api repos/dtolnay/rust-toolchain/git/ref/tags/1.80.0`). Ensure the job's
+   cargo is the 1.80 toolchain's own cargo (rustup default behavior is fine once
+   the toolchain input is right).
+3. README.md: update the MSRV paragraph — MSRV is 1.80 for all builds; drop the
+   rayon caveat sentence.
+4. CHANGELOG.md [Unreleased] Changed: one bullet — MSRV raised 1.75 → 1.80
+   (required by rayon-core 1.13; previously the 1.75 claim was unsatisfiable
+   with the rayon feature). No bead IDs in CHANGELOG.
+5. Check for any other hardcoded 1.75 references: grep -rn '1\.75' --include='*.md' --include='*.toml' --include='*.yml' (update docs that state MSRV; leave unrelated matches).
 
 ## Acceptance criteria
-- Every number in README traces to a committed artifact or the code.
-- Features, builder, MIGRATION.md link present as above.
-- No section restructuring; diff confined to README.md.
+- rust-version = "1.80" in workspace Cargo.toml.
+- CI MSRV job pins toolchain 1.80.0 and would fail under a genuine 1.80 cargo
+  if a dep needed newer.
+- README + CHANGELOG updated, no bead IDs in shipped prose.
 - Gate passes.
 
 ## Verification (gate)
-- `cargo fmt --all -- --check` (no-op expected, README only)
-- Extract every Rust code block from README and confirm it matches current API
-  by compiling the crate's doctests: `cargo test --doc --all-features` must stay
-  green, and any README snippet you change must use only public API that exists
-  (spot-check against crates/libsvm/src/lib.rs exports).
-- `grep -n 'MIGRATION.md' README.md` shows the link.
-- `git diff --stat` shows only README.md changed.
+- `rustup toolchain install 1.80.0 --profile minimal` (if absent), then
+  `cargo +1.80.0 check --locked --all-features` → must succeed.
+- `cargo +1.80.0 test --workspace --all-features` → green.
+- `cargo fmt --all -- --check` and
+  `cargo clippy --workspace --all-targets --all-features -- -D warnings` clean.
+- `grep -rn 'rust-version' Cargo.toml` shows 1.80.
 
 ## Scope
-- ✅ Always: README.md
-- ⚠️ Ask-first: any change outside README.md; any restructuring of sections
-- 🚫 Never: version bumps, CHANGELOG, reference/ artifacts, code, tests, CI
+- ✅ Always: Cargo.toml, .github/workflows/ci.yml (MSRV job only), README.md
+  (MSRV paragraph), CHANGELOG.md ([Unreleased]), docs/*.md MSRV mentions
+- ⚠️ Ask-first: touching other CI jobs, Cargo.lock changes, crate Cargo.tomls
+- 🚫 Never: version bumps, reference/ artifacts, source code, tests
