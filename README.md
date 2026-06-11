@@ -1,5 +1,3 @@
-# libsvm-rs
-
 ![libsvm-rs banner](assets/readme-banner-v2.png)
 
 [![Crates.io](https://img.shields.io/crates/v/libsvm-rs.svg)](https://crates.io/crates/libsvm-rs)
