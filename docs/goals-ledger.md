@@ -232,3 +232,18 @@ after 4 impl: commits. No per-bead confirmation needed.
 - Note: user committed banner v2 work mid-session (d4010c1) — README/assets
   no longer dirty; wa5 unblocked.
 - Follow-ups: none.
+
+## libsvm-rs-c3r — release-gate verification sweep for 0.9.0 (2026-06-11)
+- Supervisor-driven tool run; full log .sc/c3r.gate.out; summary on bead.
+- AC every gate pass-or-justified: PASS — fmt/clippy/5-way feature matrix/
+  doc tests/cargo-deny/parity/rayon-determinism all green; coverage skipped
+  locally with CI-green justification; MSRV gate FAILED honestly (below).
+- AC summary as br comment: PASS. AC no gate weakened: PASS.
+- FINDING: MSRV 1.75 + rayon feature broken — rayon/rayon-core 1.13 need
+  rustc 1.80; genuine cargo 1.75 refuses --locked --all-features. CI MSRV
+  green is misleading (newer runner cargo skips the locked rust-version
+  check). Filed libsvm-rs-9dt (P0, blocks 0.9.0 release).
+- Parity: 65/0/29/5 (pass/fail/warn/skip), warnings 24→29 vs Feb baseline —
+  all probability probA/probB drift from the by-design glibc-rand change;
+  0 failures. Refreshed reference artifacts committed.
+- Follow-ups: libsvm-rs-9dt only.
