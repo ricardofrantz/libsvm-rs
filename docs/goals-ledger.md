@@ -142,3 +142,12 @@
   bench artifacts; Linux train_probability median 1.074 / worst 2.058): PASS
 - Diff confined to reference/ + README.md: PASS
 - Follow-ups: none
+
+## Batch contract — 2026-06-11 (deep-improve close-out, user-confirmed)
+AUTO batch: ALL 9 open beads in `br ready` order, starting libsvm-rs-vbx.
+Beads: vbx (CI wasm fix, P0) → c3r (gate sweep, P0) · 4bd (master→main +
+dependabot cleanup) · cww (security audit) · 80n (CHANGELOG) · wa5 (README) ·
+246 (docs.rs pass) · 4pz (semver-checks) · lx7 (housekeeping) → 2wg (release).
+Stop conditions: BEFORE the publish/tag/push step of libsvm-rs-2wg (explicit
+user OK required); standard BLOCKED / Ask-first stops. /clear checkpoint
+after 4 impl: commits. No per-bead confirmation needed.
