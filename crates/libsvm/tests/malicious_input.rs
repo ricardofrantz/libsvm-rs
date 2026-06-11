@@ -203,6 +203,14 @@ fn serde_rejects_non_finite_sv_coef() {
 
 #[cfg(feature = "serde")]
 #[test]
+fn serde_rejects_negative_gamma() {
+    let mut model = valid_serde_model();
+    model.param.gamma = -1.0;
+    assert_serde_model_err_contains(model, "gamma must be >= 0");
+}
+
+#[cfg(feature = "serde")]
+#[test]
 fn serde_rejects_negative_degree() {
     let mut model = valid_serde_model();
     model.param.kernel_type = KernelType::Polynomial;

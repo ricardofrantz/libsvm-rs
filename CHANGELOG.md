@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+- Reject negative `gamma` for polynomial/RBF/sigmoid kernels at model load
+  (text and serde paths); refreshed security audit covering the serde,
+  rayon, builder, and PRNG surfaces (`SECURITY_AUDIT.md`).
+
 ## [0.8.1] - 2026-06-02
 
 ### Security

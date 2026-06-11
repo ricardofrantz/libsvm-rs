@@ -917,6 +917,16 @@ pub(crate) fn validate_model(model: &SvmModel) -> Result<(), SvmError> {
             model.param.gamma
         )));
     }
+    if matches!(
+        model.param.kernel_type,
+        KernelType::Polynomial | KernelType::Rbf | KernelType::Sigmoid
+    ) && model.param.gamma < 0.0
+    {
+        return Err(SvmError::ModelFormatError(format!(
+            "gamma must be >= 0, got {}",
+            model.param.gamma
+        )));
+    }
     if !model.param.coef0.is_finite() {
         return Err(SvmError::ModelFormatError(format!(
             "coef0 must be finite, got {}",

@@ -176,3 +176,19 @@ after 4 impl: commits. No per-bead confirmation needed.
   repointed. README badges branch-agnostic.
 - PENDING at session stop: CI run 27331635949 + Fuzz 27331635935 on main
   (bench fix) — close bead when green.
+
+## libsvm-rs-cww — fresh security audit, SECURITY_AUDIT.md rewrite (2026-06-11)
+- Supervisor-driven (user requested Fable 5 authorship); 4 parallel codex
+  read-only reviewer lanes (serde / rayon / F1-F6+builder / supply chain).
+- AC audit rewritten (date, commit 0c81b93, serde/rayon/builder/LCG): PASS
+- AC findings fixed-or-filed: PASS — S1 (negative gamma at model load, Medium)
+  fixed in validate_model + regression test; S2-S6 accepted/informational,
+  documented with dispositions; no release-blocking beads needed.
+- AC adversarial serde test passing by rejection: PASS —
+  serde_rejects_negative_gamma + 7 pre-existing structural rejection tests.
+- AC cargo test --workspace --all-features green: PASS (196 tests, EXIT=0);
+  fmt --check + clippy -D warnings clean.
+- Reviewer claim refuted: "silent zero-padded CV results on fold panic" —
+  panic unwinds, local buffer dropped, caller sees nothing partial (S5).
+- F1-F6 re-verified intact; builder has no gaps vs svm_check_parameter.
+- Follow-ups: none (serde fuzz target recorded as S4 nice-to-have).
