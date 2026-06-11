@@ -1,5 +1,7 @@
 # libsvm-rs
 
+![libsvm-rs banner](assets/readme-banner-v1.png)
+
 A pure-Rust implementation of [LIBSVM](https://github.com/cjlin1/libsvm), for
 when you want LIBSVM's model and data formats without linking the C/C++ library.
 It covers the same SVM types, kernels, sparse text format, model files, and
