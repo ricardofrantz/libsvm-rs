@@ -1,31 +1,38 @@
-# Goal: libsvm-rs-cww — Fresh security audit; rewrite SECURITY_AUDIT.md
+# Goal: libsvm-rs-80n — CHANGELOG: write the 0.9.0 entry covering all post-0.8.1 work
 
-Supervisor-driven cycle (user requested Fable 5 authorship of the audit report).
-Method mirrors the 2026-06-02 audit: 4 parallel read-only reviewer lanes +
-coordinator (supervisor) reproduction of every finding before it enters the report.
+Context pointers (read these first): `br show libsvm-rs-80n` · VISION.md ·
+CHANGELOG.md (match its style exactly).
 
-## Reviewer lanes (read-only)
-1. serde surface: derive/impls on SvmModel/SvmParameter vs text-parser invariants
-   (validate_model_header parity, caps bypass via serde_json::from_str).
-2. rayon paths: CV folds + probability fold trainings — panic safety, determinism,
-   shared state.
-3. Regression: F1–F6 fixes intact; SvmParameterBuilder validation parity with
-   svm_check_parameter.
-4. Supply chain: deny.toml, workflow SHA pinning, toolchain pin, fuzz coverage of
-   serde surface.
+## Task
+Write the complete entry under `## [Unreleased]` in CHANGELOG.md (a short
+Security subsection already exists there — keep it, merge into your grouping).
+Do NOT retitle to 0.9.0 — the release bead does that. Sweep
+`git log v0.8.1..HEAD --oneline` and map every commit to a bullet or a
+conscious exclusion (pure CI/goal-loop/dependabot commits may be folded or
+omitted; user-visible changes may NOT).
+
+Must cover (verify against the log, don't trust blindly): builder API; serde
+feature; rayon feature (parallel CV + probability folds); migration guide
+docs/MIGRATION.md; wasm CI check; glibc-rand probability-CV shuffle on Linux;
+macOS differential re-baseline; master→main migration (call out link/clone
+impact); security audit + negative-gamma load rejection (already drafted in
+the file).
 
 ## Acceptance criteria
-- SECURITY_AUDIT.md rewritten: current date + audited commit on main, covers
-  serde/rayon/builder/LCG surfaces, findings marked [Verified]/[Reviewer].
-- Actionable findings fixed-with-regression-test here or filed as bug beads
-  blocking libsvm-rs-2wg.
-- ≥1 adversarial serde input test passing by REJECTION (not panic).
-- `cargo test --workspace --all-features` green.
+- Every v0.8.1..HEAD commit represented or consciously excluded; post the
+  commit→bullet mapping in your CODER REPORT (not in the file).
+- The Linux probability behavior change has its own explicit Changed bullet:
+  one sentence on WHY (glibc rand replication restores C parity for the
+  stratified shuffle) and WHO is affected (Linux users of probability
+  estimation/CV) — outputs differ from 0.8.1 by design.
+- Keep-a-Changelog grouping (Added/Changed/Fixed/Security/Documentation);
+  user-facing language; NO commit hashes or bead IDs in the file.
 
 ## Verification
-`cargo test --workspace --all-features 2>&1 | tail -5` + audit diff read.
+`grep -n "Unreleased" CHANGELOG.md` + read your own diff; the mapping list is
+the completeness proof.
 
 ## Scope
-✅ SECURITY_AUDIT.md; if fixes needed: crates/libsvm/src/{io.rs,probability.rs,
-cross_validation.rs,train.rs,parameter,serde sites}, fuzz/, tests/.
-🚫 tolerance files, reference/ artifacts, CI workflows.
+✅ CHANGELOG.md only.
+🚫 Everything else. NOTE: README.md and assets/ have uncommitted changes from
+another session — do not touch or stage them.
