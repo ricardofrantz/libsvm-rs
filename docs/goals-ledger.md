@@ -266,3 +266,18 @@ after 4 impl: commits. No per-bead confirmation needed.
   serde bullet overstated validation (svm_train does not validate; callers
   must validate()/check_parameter unless builder-built).
 - Follow-ups: none.
+
+## libsvm-rs-9dt — bump MSRV to 1.80 (2026-06-11)
+- Coder cycle ended exit 4 (stalled) — but the diff was complete; the stall
+  was my over-strict gate: `cargo +1.80.0 test` fails on a dev-dep needing
+  edition2024 (clap_lex via criterion). MSRV is a consumer guarantee =
+  `check --locked --all-features`, matching the CI job. Gate corrected.
+- AC rust-version 1.80 in workspace Cargo.toml: PASS.
+- AC CI MSRV job 1.80.0, SHA-pinned: PASS — new pin 279ac40 verified
+  upstream (commit message "toolchain: 1.80.0"); explicit toolchain input
+  guards it regardless.
+- AC README + CHANGELOG updated, no bead IDs: PASS — badge 1.80, MSRV
+  paragraph simplified, CHANGELOG Changed bullet.
+- Gates (supervisor re-run): cargo +1.80.0 check --locked --all-features
+  PASS; fmt, clippy -D warnings, stable test suite (12 ok) green.
+- Follow-ups: none.

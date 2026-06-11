@@ -5,7 +5,7 @@
 [![Crates.io](https://img.shields.io/crates/v/libsvm-rs.svg)](https://crates.io/crates/libsvm-rs)
 [![Documentation](https://docs.rs/libsvm-rs/badge.svg)](https://docs.rs/libsvm-rs)
 [![CI](https://github.com/ricardofrantz/libsvm-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/ricardofrantz/libsvm-rs/actions)
-[![MSRV](https://img.shields.io/badge/MSRV-1.75-blue.svg)](Cargo.toml)
+[![MSRV](https://img.shields.io/badge/MSRV-1.80-blue.svg)](Cargo.toml)
 [![License](https://img.shields.io/badge/license-BSD--3-blue.svg)](LICENSE)
 
 A pure-Rust implementation of [LIBSVM](https://github.com/cjlin1/libsvm), for
@@ -159,8 +159,7 @@ enable an optional feature:
 libsvm-rs = "0.8.1"
 ```
 
-MSRV is Rust `1.75` for default builds. The optional `rayon` feature currently
-pulls in `rayon-core 1.13`, which needs rustc `1.80` or newer.
+MSRV is Rust `1.80` for all builds.
 
 ### CLI tools
 

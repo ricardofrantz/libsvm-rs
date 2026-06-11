@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- MSRV raised from 1.75 to 1.80, required by rayon-core 1.13; previously the
+  1.75 claim was unsatisfiable with the `rayon` feature.
 - Linux probability estimation and probability cross-validation now replicate
   glibc `rand()` for the stratified shuffle, restoring C LIBSVM parity; Linux
   users of probability estimation or cross-validation should expect outputs to
