@@ -106,6 +106,30 @@ pub fn predict_values(model: &SvmModel, x: &[SvmNode], dec_values: &mut [f64]) -
 ///
 /// Convenience wrapper around `predict_values` that allocates the
 /// decision values buffer internally. Matches LIBSVM's `svm_predict`.
+///
+/// ```
+/// use libsvm_rs::predict::predict;
+/// use libsvm_rs::train::svm_train;
+/// use libsvm_rs::{KernelType, SvmNode, SvmParameterBuilder, SvmProblem, SvmType};
+///
+/// let problem = SvmProblem {
+///     labels: vec![-1.0, -1.0, 1.0, 1.0],
+///     instances: vec![
+///         vec![SvmNode { index: 1, value: -2.0 }],
+///         vec![SvmNode { index: 1, value: -1.0 }],
+///         vec![SvmNode { index: 1, value: 1.0 }],
+///         vec![SvmNode { index: 1, value: 2.0 }],
+///     ],
+/// };
+/// let param = SvmParameterBuilder::new()
+///     .svm_type(SvmType::CSvc)
+///     .kernel_type(KernelType::Linear)
+///     .build()?;
+/// let model = svm_train(&problem, &param);
+///
+/// assert_eq!(predict(&model, &[SvmNode { index: 1, value: 1.5 }]), 1.0);
+/// # Ok::<(), libsvm_rs::SvmError>(())
+/// ```
 pub fn predict(model: &SvmModel, x: &[SvmNode]) -> f64 {
     let n = match model.param.svm_type {
         SvmType::OneClass | SvmType::EpsilonSvr | SvmType::NuSvr => 1,

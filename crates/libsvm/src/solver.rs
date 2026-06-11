@@ -14,9 +14,13 @@ const INF: f64 = f64::INFINITY;
 /// Result of the solver.
 #[derive(Debug, Clone)]
 pub struct SolutionInfo {
+    /// Final dual objective value reported like LIBSVM's `SolutionInfo::obj`.
     pub obj: f64,
+    /// Bias term (`rho`) for the solved decision function.
     pub rho: f64,
+    /// Positive-class box constraint used by the solved sub-problem.
     pub upper_bound_p: f64,
+    /// Negative-class box constraint used by the solved sub-problem.
     pub upper_bound_n: f64,
     /// Extra value for Nu solver: `(r1 + r2) / 2`.
     pub r: f64,
@@ -33,7 +37,9 @@ enum AlphaStatus {
 /// Standard vs Nu solver variant.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SolverVariant {
+    /// Standard LIBSVM `Solver` variant for C-SVC, one-class SVM, and ε-SVR.
     Standard,
+    /// LIBSVM `Solver_NU` variant for ν-SVC and ν-SVR.
     Nu,
 }
 

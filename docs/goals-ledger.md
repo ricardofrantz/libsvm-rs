@@ -204,3 +204,20 @@ after 4 impl: commits. No per-bead confirmation needed.
 - Pre-existing Security subsection merged intact.
 - Coder respected the do-not-touch list (README/assets banner work untouched).
 - Follow-ups: none.
+
+## libsvm-rs-246 — docs.rs full pass (2026-06-11)
+- Coder cycle (pi goal loop); 9 files, 214 insertions, docs-only.
+- AC doc build clean: PASS (supervisor re-run) — nightly unavailable locally,
+  stable `RUSTDOCFLAGS="-D warnings" cargo doc --all-features` clean; docsrs
+  cfg_attr pattern verified by inspection (CI/docs.rs will exercise nightly).
+- AC doctests >0 for train/predict/CV/save-load/builder: PASS — 7 pass, 1
+  ignored (cargo test --doc --all-features, supervisor re-run).
+- AC zero missing_docs with lint: PASS — #![deny(missing_docs)] final state.
+- Gates: fmt --check, clippy --all-targets --all-features -D warnings, full
+  workspace suite (12 suites ok) — all green, supervisor re-run.
+- Codex review (214-line diff): no hidden behavior changes; one P2 — derive-
+  generated serde impls (SvmNode/SvmParameter/SvmModel Serialize) render
+  unbadged on docs.rs all-features; only handwritten impls carry doc(cfg).
+  Accepted: known rustdoc limitation for cfg_attr derives (same as serde
+  ecosystem norm); fixing needs manual impls — out of docs-only scope.
+- Follow-ups: none filed (P2 recorded above as accepted).

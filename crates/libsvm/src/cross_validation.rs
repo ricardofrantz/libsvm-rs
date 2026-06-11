@@ -83,6 +83,29 @@ fn evaluate_fold(
 /// - **Regression / one-class** or `nr_fold == l`: simple random split.
 ///
 /// If `nr_fold > l`, clamps to `l` (leave-one-out).
+///
+/// ```
+/// use libsvm_rs::cross_validation::svm_cross_validation;
+/// use libsvm_rs::{KernelType, SvmNode, SvmParameterBuilder, SvmProblem, SvmType};
+///
+/// let problem = SvmProblem {
+///     labels: vec![-1.0, -1.0, 1.0, 1.0],
+///     instances: vec![
+///         vec![SvmNode { index: 1, value: -2.0 }],
+///         vec![SvmNode { index: 1, value: -1.0 }],
+///         vec![SvmNode { index: 1, value: 1.0 }],
+///         vec![SvmNode { index: 1, value: 2.0 }],
+///     ],
+/// };
+/// let param = SvmParameterBuilder::new()
+///     .svm_type(SvmType::CSvc)
+///     .kernel_type(KernelType::Linear)
+///     .build()?;
+///
+/// let targets = svm_cross_validation(&problem, &param, 2);
+/// assert_eq!(targets.len(), problem.labels.len());
+/// # Ok::<(), libsvm_rs::SvmError>(())
+/// ```
 pub fn svm_cross_validation(
     prob: &SvmProblem,
     param: &SvmParameter,

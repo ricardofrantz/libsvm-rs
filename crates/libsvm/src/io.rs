@@ -458,6 +458,36 @@ pub fn save_model(path: &Path, model: &SvmModel) -> Result<(), SvmError> {
 }
 
 /// Save an SVM model to any writer.
+///
+/// This is the writer-backed equivalent of LIBSVM's `svm_save_model`, useful
+/// for in-memory buffers and tests.
+///
+/// ```
+/// use libsvm_rs::io::{load_model_from_reader, save_model_to_writer};
+/// use libsvm_rs::train::svm_train;
+/// use libsvm_rs::{KernelType, SvmNode, SvmParameterBuilder, SvmProblem, SvmType};
+///
+/// let problem = SvmProblem {
+///     labels: vec![-1.0, -1.0, 1.0, 1.0],
+///     instances: vec![
+///         vec![SvmNode { index: 1, value: -2.0 }],
+///         vec![SvmNode { index: 1, value: -1.0 }],
+///         vec![SvmNode { index: 1, value: 1.0 }],
+///         vec![SvmNode { index: 1, value: 2.0 }],
+///     ],
+/// };
+/// let param = SvmParameterBuilder::new()
+///     .svm_type(SvmType::CSvc)
+///     .kernel_type(KernelType::Linear)
+///     .build()?;
+/// let model = svm_train(&problem, &param);
+///
+/// let mut bytes = Vec::new();
+/// save_model_to_writer(&mut bytes, &model)?;
+/// let loaded = load_model_from_reader(std::io::Cursor::new(bytes))?;
+/// assert_eq!(loaded.svm_type(), SvmType::CSvc);
+/// # Ok::<(), libsvm_rs::SvmError>(())
+/// ```
 pub fn save_model_to_writer(mut w: impl Write, model: &SvmModel) -> Result<(), SvmError> {
     let param = &model.param;
 
@@ -603,7 +633,35 @@ pub fn load_model(path: &Path) -> Result<SvmModel, SvmError> {
 /// Load an SVM model from any buffered reader.
 ///
 /// Uses [`LoadOptions::default`]. See [`load_model`] for the validation
-/// contract and non-goals.
+/// contract and non-goals. This is the reader-backed equivalent of LIBSVM's
+/// `svm_load_model`.
+///
+/// ```
+/// use libsvm_rs::io::{load_model_from_reader, save_model_to_writer};
+/// use libsvm_rs::train::svm_train;
+/// use libsvm_rs::{KernelType, SvmNode, SvmParameterBuilder, SvmProblem, SvmType};
+///
+/// let problem = SvmProblem {
+///     labels: vec![-1.0, -1.0, 1.0, 1.0],
+///     instances: vec![
+///         vec![SvmNode { index: 1, value: -2.0 }],
+///         vec![SvmNode { index: 1, value: -1.0 }],
+///         vec![SvmNode { index: 1, value: 1.0 }],
+///         vec![SvmNode { index: 1, value: 2.0 }],
+///     ],
+/// };
+/// let param = SvmParameterBuilder::new()
+///     .svm_type(SvmType::CSvc)
+///     .kernel_type(KernelType::Linear)
+///     .build()?;
+/// let model = svm_train(&problem, &param);
+///
+/// let mut bytes = Vec::new();
+/// save_model_to_writer(&mut bytes, &model)?;
+/// let loaded = load_model_from_reader(std::io::Cursor::new(bytes))?;
+/// assert_eq!(loaded.sv.len(), model.sv.len());
+/// # Ok::<(), libsvm_rs::SvmError>(())
+/// ```
 pub fn load_model_from_reader(reader: impl BufRead) -> Result<SvmModel, SvmError> {
     load_model_from_reader_with_options(reader, &LoadOptions::default())
 }

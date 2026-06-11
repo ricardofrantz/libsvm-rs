@@ -40,6 +40,7 @@ pub struct SvcQ<'a> {
 }
 
 impl<'a> SvcQ<'a> {
+    /// Build the classification Q matrix used by LIBSVM's `SVC_Q` helper.
     pub fn new(x: &'a [Vec<SvmNode>], param: &SvmParameter, y: &[i8]) -> Self {
         let l = x.len();
         let kernel = Kernel::new(x, param);
@@ -98,6 +99,7 @@ pub struct OneClassQ<'a> {
 }
 
 impl<'a> OneClassQ<'a> {
+    /// Build the one-class Q matrix used by LIBSVM's `ONE_CLASS_Q` helper.
     pub fn new(x: &'a [Vec<SvmNode>], param: &SvmParameter) -> Self {
         let l = x.len();
         let kernel = Kernel::new(x, param);
@@ -156,6 +158,7 @@ pub struct SvrQ<'a> {
 }
 
 impl<'a> SvrQ<'a> {
+    /// Build the regression Q matrix used by LIBSVM's `SVR_Q` helper.
     pub fn new(x: &'a [Vec<SvmNode>], param: &SvmParameter) -> Self {
         let l = x.len();
         let kernel = Kernel::new(x, param);

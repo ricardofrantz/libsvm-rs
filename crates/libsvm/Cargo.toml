@@ -13,6 +13,10 @@ documentation = "https://docs.rs/libsvm-rs"
 keywords = ["svm", "machine-learning", "classification", "regression", "libsvm"]
 categories = ["science", "algorithms"]
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [dependencies]
 thiserror = { workspace = true }
 serde = { version = "1", features = ["derive"], optional = true }

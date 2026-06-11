@@ -311,6 +311,7 @@ pub struct SvmModel {
 }
 
 #[cfg(feature = "serde")]
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl serde::Serialize for SvmType {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -321,6 +322,7 @@ impl serde::Serialize for SvmType {
 }
 
 #[cfg(feature = "serde")]
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<'de> serde::Deserialize<'de> for SvmType {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -340,6 +342,7 @@ impl<'de> serde::Deserialize<'de> for SvmType {
 }
 
 #[cfg(feature = "serde")]
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl serde::Serialize for KernelType {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -350,6 +353,7 @@ impl serde::Serialize for KernelType {
 }
 
 #[cfg(feature = "serde")]
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<'de> serde::Deserialize<'de> for KernelType {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -369,6 +373,7 @@ impl<'de> serde::Deserialize<'de> for KernelType {
 }
 
 #[cfg(feature = "serde")]
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<'de> serde::Deserialize<'de> for SvmModel {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

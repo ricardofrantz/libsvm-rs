@@ -287,6 +287,29 @@ fn count_nonzero(nonzero: &[bool], start: usize, len: usize) -> usize {
 ///
 /// Matches LIBSVM's `svm_train` function. Produces an `SvmModel` that
 /// can be used for prediction or saved to a file.
+///
+/// ```
+/// use libsvm_rs::train::svm_train;
+/// use libsvm_rs::{KernelType, SvmNode, SvmParameterBuilder, SvmProblem, SvmType};
+///
+/// let problem = SvmProblem {
+///     labels: vec![-1.0, -1.0, 1.0, 1.0],
+///     instances: vec![
+///         vec![SvmNode { index: 1, value: -2.0 }],
+///         vec![SvmNode { index: 1, value: -1.0 }],
+///         vec![SvmNode { index: 1, value: 1.0 }],
+///         vec![SvmNode { index: 1, value: 2.0 }],
+///     ],
+/// };
+/// let param = SvmParameterBuilder::new()
+///     .svm_type(SvmType::CSvc)
+///     .kernel_type(KernelType::Linear)
+///     .build()?;
+///
+/// let model = svm_train(&problem, &param);
+/// assert_eq!(model.svm_type(), SvmType::CSvc);
+/// # Ok::<(), libsvm_rs::SvmError>(())
+/// ```
 pub fn svm_train(problem: &SvmProblem, param: &SvmParameter) -> SvmModel {
     // Compute effective gamma if zero
     let mut param = param.clone();
