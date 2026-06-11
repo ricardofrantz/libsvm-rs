@@ -1,6 +1,12 @@
 # libsvm-rs
 
-![libsvm-rs banner](assets/readme-banner-v1.png)
+![libsvm-rs banner](assets/readme-banner-v2.png)
+
+[![Crates.io](https://img.shields.io/crates/v/libsvm-rs.svg)](https://crates.io/crates/libsvm-rs)
+[![Documentation](https://docs.rs/libsvm-rs/badge.svg)](https://docs.rs/libsvm-rs)
+[![CI](https://github.com/ricardofrantz/libsvm-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/ricardofrantz/libsvm-rs/actions)
+[![MSRV](https://img.shields.io/badge/MSRV-1.75-blue.svg)](Cargo.toml)
+[![License](https://img.shields.io/badge/license-BSD--3-blue.svg)](LICENSE)
 
 A pure-Rust implementation of [LIBSVM](https://github.com/cjlin1/libsvm), for
 when you want LIBSVM's model and data formats without linking the C/C++ library.
@@ -11,12 +17,6 @@ The aim is numerical equivalence, not bitwise identity. A verification pipeline
 checks this implementation against a pinned upstream LIBSVM build across
 classification, regression, one-class, probability, and precomputed-kernel
 cases, and CI compile-checks the core crate for `wasm32-unknown-unknown`.
-
-[![Crates.io](https://img.shields.io/crates/v/libsvm-rs.svg)](https://crates.io/crates/libsvm-rs)
-[![Documentation](https://docs.rs/libsvm-rs/badge.svg)](https://docs.rs/libsvm-rs)
-[![CI](https://github.com/ricardofrantz/libsvm-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/ricardofrantz/libsvm-rs/actions)
-[![MSRV](https://img.shields.io/badge/MSRV-1.75-blue.svg)](Cargo.toml)
-[![License](https://img.shields.io/badge/license-BSD--3-blue.svg)](LICENSE)
 
 ## What you get
 
