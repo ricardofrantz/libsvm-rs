@@ -1,8 +1,9 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use libsvm_rs::io::load_problem;
 use libsvm_rs::predict::predict;
 use libsvm_rs::train::svm_train;
 use libsvm_rs::{KernelType, SvmParameter, SvmType};
+use std::hint::black_box;
 use std::path::Path;
 
 fn load_heart_scale() -> libsvm_rs::SvmProblem {
