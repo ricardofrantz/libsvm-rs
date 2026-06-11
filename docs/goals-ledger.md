@@ -247,3 +247,22 @@ after 4 impl: commits. No per-bead confirmation needed.
   all probability probA/probB drift from the by-design glibc-rand change;
   0 failures. Refreshed reference artifacts committed.
 - Follow-ups: libsvm-rs-9dt only.
+
+## libsvm-rs-wa5 — README accuracy pass for 0.9.0 (2026-06-11)
+- Coder cycle (pi goal loop, exit 0); diff confined to README.md (71+/31-).
+- AC every number traces to committed artifacts: PASS — bench ratios
+  (0.812/0.835/0.938/1.055, BENCH_RUNS=20), differential 237/3/0/10 and 3
+  warning cases, compare_summary 65/29/0/5 all verified by supervisor.
+- AC features/builder/MIGRATION.md link: PASS — serde+rayon documented,
+  builder in Quick Start with one direct-struct example kept, MIGRATION.md
+  linked in 3 places.
+- AC no restructuring, diff README-only: PASS.
+- Gates (supervisor re-run): fmt --check, doc tests (7+1 ignored) green.
+- Touch-ups (supervisor): removed two internal-process leaks the coder put
+  in public prose ("release bead" note, libsvm-rs-9dt bead id in MSRV
+  caveat); MSRV/rayon-1.80 caveat kept, reworded plainly.
+- Codex review: 2 valid P2s, both fixed — compare_summary warn column is
+  per-event not per-case (table said "99 configs"; now 70 cases + footnote);
+  serde bullet overstated validation (svm_train does not validate; callers
+  must validate()/check_parameter unless builder-built).
+- Follow-ups: none.

@@ -36,7 +36,8 @@ you specifically want the original C implementation.
 
 This crate instead reimplements the LIBSVM algorithms and file formats in Rust.
 Reach for it when you want Rust-native deployment, easier cross-compilation, or
-code you can inspect and test without an FFI boundary.
+code you can inspect and test without an FFI boundary. If you are moving from C
+LIBSVM or `libsvm-sys2`, start with [`docs/MIGRATION.md`](docs/MIGRATION.md).
 
 ## Performance
 
@@ -46,10 +47,10 @@ Rust was faster in the measured run.
 
 | Operation | Cases | Rust/C median ratio |
 |---|---:|---:|
-| `predict` | 40 | `0.804` |
-| `predict_probability` | 30 | `0.834` |
-| `train` | 40 | `0.916` |
-| `train_probability` | 30 | `1.025` |
+| `predict` | 40 | `0.812` |
+| `predict_probability` | 30 | `0.835` |
+| `train` | 40 | `0.938` |
+| `train_probability` | 30 | `1.055` |
 
 Rust is not uniformly faster than C. Prediction comes out ahead, training is
 roughly even, and probability training is sometimes slower. See
@@ -58,16 +59,18 @@ roughly even, and probability training is sometimes slower. See
 
 ## Parity Status
 
-Current full differential suite against pinned upstream LIBSVM v337:
+Current committed verification artifacts against pinned upstream LIBSVM v337:
 
-| Platform (250 configurations) | Pass | Warn | Fail | Skip |
-|---|---:|---:|---:|---:|
-| macOS (arm64) | 237 | 3 | 0 | 10 |
-| Linux (x86_64) | 240 | 0 | 0 | 10 |
+| Artifact | Scope | Pass | Warn | Fail | Skip |
+|---|---:|---:|---:|---:|---:|
+| `reference/compare_summary.json` | 70 cases | 65 | 29 | 0 | 5 |
+| `reference/differential_report.md` | 250 configs | 237 | 3 | 0 | 10 |
 
-The warnings are documented numerical near-parity cases, not prediction-logic
-failures. Differential baselines are recorded per platform; libc `rand()`
-replication exists for macOS and Linux. See
+In `compare_summary.json` the warning column counts individual probability
+mismatch events, not cases — a case can record warnings and still pass. The
+warnings are documented numerical near-parity cases, not prediction-logic
+failures. Differential baselines are recorded in the reference artifacts; libc
+`rand()` replication exists for macOS and Linux. See
 [`reference/differential_report.md`](reference/differential_report.md) and
 [`reference/tolerance_policy.md`](reference/tolerance_policy.md).
 
@@ -84,7 +87,18 @@ input by default.
   embedded NUL bytes.
 - Model files additionally validate header consistency before support-vector
   allocation: `nr_class`, `total_sv`, `rho`, `label`, `nr_sv`, `probA`,
-  `probB`, probability-density marks, and precomputed-kernel rows must agree.
+  `probB`, probability-density marks, precomputed-kernel rows, and non-negative
+  `gamma` for gamma-using kernels must agree with the model invariants.
+- The optional `serde` model path reuses the same model validation boundary as
+  the text loader. Deserializing an `SvmParameter` performs no validation, and
+  `svm_train` does not validate either — callers must run
+  `SvmParameter::validate()` or `check_parameter(problem, param)` themselves
+  unless the parameter came from `SvmParameterBuilder::build()`.
+- The optional `rayon` paths consume fold shuffling PRNG state serially before
+  parallel work. The glibc-compatible LCG used for parity is not shared across
+  workers.
+- `SvmParameterBuilder::build()` delegates to `SvmParameter::validate()`; checks
+  that need training data remain in `check_parameter(problem, param)`.
 - Public loader paths return structured errors for malformed text input within
   the configured caps; they should not panic on adversarial files.
 
@@ -99,7 +113,9 @@ controlled.
 
 - You are building a Rust service or CLI and want SVM training/prediction
   without a C build or runtime dependency.
-- You already have LIBSVM-format data or models and want to keep that workflow.
+- You already have LIBSVM-format data or models and want to keep that workflow;
+  see [`docs/MIGRATION.md`](docs/MIGRATION.md) for C LIBSVM and `libsvm-sys2`
+  migration notes.
 - You need C-SVC, nu-SVC, one-class SVM, epsilon-SVR, or nu-SVR with standard
   LIBSVM kernels.
 - You want a small, inspectable Rust implementation for scientific or embedded
@@ -118,6 +134,14 @@ controlled.
 
 ## Features
 
+Cargo features are opt-in. The default feature set is empty (`default = []`), so
+library builds keep the single runtime dependency on `thiserror` unless you
+enable an optional feature:
+
+- `serde`: enables `Serialize`/`Deserialize` for model and parameter types.
+- `rayon`: enables parallel cross-validation folds; serial behavior remains the
+  default.
+
 - **All 5 SVM types**: C-SVC, nu-SVC, one-class SVM, epsilon-SVR, nu-SVR (`-s 0..4`)
 - **All 5 kernel types**: linear, polynomial, RBF, sigmoid, precomputed (`-t 0..4`)
 - **Model file compatibility**: reads and writes LIBSVM text format at `%.17g` precision, so a model trained with the C library loads in Rust and vice versa
@@ -132,8 +156,11 @@ controlled.
 
 ```toml
 [dependencies]
-libsvm-rs = "0.8"
+libsvm-rs = "0.8.1"
 ```
+
+MSRV is Rust `1.75` for default builds. The optional `rayon` feature currently
+pulls in `rayon-core 1.13`, which needs rustc `1.80` or newer.
 
 ### CLI tools
 
@@ -153,18 +180,29 @@ cargo build --release -p svm-train-rs -p svm-predict-rs -p svm-scale-rs
 use libsvm_rs::io::{load_problem, save_model, load_model};
 use libsvm_rs::predict::{predict, predict_values};
 use libsvm_rs::train::svm_train;
-use libsvm_rs::{KernelType, SvmParameter, SvmType};
+use libsvm_rs::{KernelType, SvmParameter, SvmParameterBuilder, SvmType};
 use std::path::Path;
 
 // Load training data in LIBSVM sparse format
 let problem = load_problem(Path::new("data/heart_scale")).unwrap();
 
-// Configure parameters (defaults match LIBSVM)
-let mut param = SvmParameter::default();
-param.svm_type = SvmType::CSvc;
-param.kernel_type = KernelType::Rbf;
-param.gamma = 1.0 / 13.0;  // 1/num_features
-param.c = 1.0;
+// Configure parameters with the builder (defaults match LIBSVM)
+let param = SvmParameterBuilder::new()
+    .svm_type(SvmType::CSvc)
+    .kernel_type(KernelType::Rbf)
+    .gamma(1.0 / 13.0)  // 1/num_features
+    .c(1.0)
+    .build()
+    .unwrap();
+
+// Direct struct construction is also public API.
+let _direct_param = SvmParameter {
+    svm_type: SvmType::CSvc,
+    kernel_type: KernelType::Rbf,
+    gamma: 1.0 / 13.0,
+    c: 1.0,
+    ..SvmParameter::default()
+};
 
 // Train
 let model = svm_train(&problem, &param);
@@ -318,7 +356,7 @@ DIFF_NONPROB_REL_TOL=2e-5 DIFF_SCOPE=full python3 scripts/run_differential_suite
 bash scripts/check_coverage_thresholds.sh
 
 # 5. Run Rust-vs-C performance benchmarks
-BENCH_WARMUP=3 BENCH_RUNS=30 python3 scripts/benchmark_compare.py
+BENCH_WARMUP=3 BENCH_RUNS=20 python3 scripts/benchmark_compare.py
 ```
 
 ### Understanding Differential Results
@@ -330,15 +368,17 @@ BENCH_WARMUP=3 BENCH_RUNS=30 python3 scripts/benchmark_compare.py
 | `fail`  | Deterministic parity break — label mismatch or model divergence outside thresholds |
 | `skip`  | Configuration not executed (usually because training fails in both implementations) |
 
-Current status (full scope, 250 configs): 236 pass, 4 warn, 0 fail, 10 skip.
+Current full-scope status in `reference/differential_report.md` (250 configs):
+237 pass, 3 warn, 0 fail, 10 skip.
 
-The 4 warnings are:
+The 3 warnings are:
 1. `housing_scale_s3_t2_tuned` — epsilon-SVR near-parity training drift (bounded, cross-predict verified)
-2. `gen_regression_sparse_scale_s4_t3_tuned` — probability header (`probA`) drift
-3. `gen_extreme_scale_scale_s0_t1_default` — rho-only near-equivalence drift
-4. `gen_extreme_scale_scale_s2_t1_default` — one-class near-boundary label drift
+2. `gen_extreme_scale_scale_s0_t1_default` — rho-only header drift
+3. `gen_extreme_scale_scale_s2_t1_default` — one-class near-boundary label drift
 
-All 10 skips are `nu_svc` on synthetic `gen_binary_imbalanced.scale` where both C and Rust fail training identically.
+All 10 skips are configurations not executed by the full differential suite.
+`reference/compare_summary.json` records the current summary comparison artifact
+as 65 pass, 29 warn, 0 fail, 5 skip.
 
 The active tolerance policy is `differential-v3` (documented in `reference/tolerance_policy.md`).
 
@@ -738,7 +778,7 @@ Float formatting uses `%.17g`-equivalent precision for model files (ensuring rou
 | Solver uses enum variant, not traits | 95% shared code; cleaner than trait objects for 4 method overrides |
 | `QMatrix::get_q` takes `&mut self` | Replaces C++ `const` method + `mutable` cache fields |
 | `%.17g` float formatting | Bit-exact model file compatibility with C LIBSVM |
-| Zero runtime deps | Only `thiserror`; `rayon` feature-gated for opt-in parallelism |
+| Minimal runtime deps | Default builds use only `thiserror`; `serde` and `rayon` are feature-gated |
 | Manual CLI arg parsing | No `clap` dependency; handles `-wi` composite flags matching C behavior |
 | Deterministic PRNG | Replicates C's `rand()` for identical fold shuffling in CV/probability |
 
@@ -777,7 +817,7 @@ Coverage metrics: 93.19% line coverage, 92.86% function coverage (library crate)
 ## Dependencies
 
 - **Runtime**: `thiserror` (error derive macros)
-- **Optional**: `rayon` (feature-gated, for opt-in parallel cross-validation)
+- **Optional**: `serde` (feature-gated serialization), `rayon` (feature-gated parallel cross-validation)
 - **Dev**: `float-cmp` (approximate float comparison), `criterion` (benchmarks), `proptest` (property-based testing)
 
 ## Known Limitations
