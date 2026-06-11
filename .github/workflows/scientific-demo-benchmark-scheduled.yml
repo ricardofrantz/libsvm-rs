@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   scheduled-benchmark:
-    if: ${{ github.ref_name == 'master' }}
+    if: ${{ github.ref_name == 'main' }}
     uses: ./.github/workflows/scientific-demo-benchmark.yml
     with:
       auto_commit: true

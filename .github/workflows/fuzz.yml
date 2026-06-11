@@ -2,7 +2,7 @@ name: Fuzz
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   schedule:
     - cron: '0 3 * * 0'  # Sunday 03:00 UTC — deeper weekly run
   workflow_dispatch:
