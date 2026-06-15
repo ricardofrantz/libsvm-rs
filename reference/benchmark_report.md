@@ -1,6 +1,6 @@
 # Benchmark Report
 
-Date: 2026-06-08 09:27:51Z
+Date: 2026-06-15 10:58:31Z
 
 This report compares CLI performance of Rust (`svm-*-rs`) vs C (`vendor/libsvm`).
 
@@ -15,25 +15,25 @@ This report compares CLI performance of Rust (`svm-*-rs`) vs C (`vendor/libsvm`)
 
 | Operation | Cases | Rust median-of-medians (ms) | C median-of-medians (ms) | Rust/C median ratio | Rust/C p95 ratio | Worst-case ratio |
 |---|---:|---:|---:|---:|---:|---:|
-| `predict` | 40 | 2.556 | 2.977 | 0.812 | 0.968 | 1.183 |
-| `predict_probability` | 30 | 3.283 | 3.307 | 0.835 | 1.149 | 13.576 |
-| `train` | 40 | 3.635 | 3.726 | 0.938 | 1.264 | 1.317 |
-| `train_probability` | 30 | 10.332 | 9.596 | 1.055 | 1.349 | 1.411 |
+| `predict` | 40 | 2.574 | 2.928 | 0.836 | 0.958 | 0.987 |
+| `predict_probability` | 30 | 3.036 | 3.429 | 0.869 | 0.963 | 1.003 |
+| `train` | 40 | 3.586 | 3.703 | 0.931 | 1.216 | 1.356 |
+| `train_probability` | 30 | 9.909 | 9.087 | 1.083 | 1.326 | 1.403 |
 
 ## Highest Rust/C Ratios
 
 | Case | Operation | Rust/C median ratio |
 |---|---|---:|
-| `s1_t3_heart_scale` | `predict_probability` | 13.576 |
-| `s4_t0_housing_scale` | `train_probability` | 1.411 |
-| `s4_t3_housing_scale` | `train_probability` | 1.358 |
-| `s3_t3_housing_scale` | `train_probability` | 1.338 |
-| `s4_t0_housing_scale` | `train` | 1.317 |
-| `s4_t2_housing_scale` | `train_probability` | 1.312 |
-| `s4_t1_housing_scale` | `train_probability` | 1.287 |
-| `s3_t3_housing_scale` | `train` | 1.276 |
-| `s3_t0_housing_scale` | `train_probability` | 1.270 |
-| `s3_t2_housing_scale` | `train_probability` | 1.266 |
+| `s4_t0_housing_scale` | `train_probability` | 1.403 |
+| `s4_t0_housing_scale` | `train` | 1.356 |
+| `s4_t1_housing_scale` | `train_probability` | 1.339 |
+| `s3_t0_housing_scale` | `train_probability` | 1.309 |
+| `s3_t1_housing_scale` | `train_probability` | 1.299 |
+| `s4_t2_housing_scale` | `train_probability` | 1.293 |
+| `s3_t2_housing_scale` | `train_probability` | 1.258 |
+| `s3_t0_housing_scale` | `train` | 1.241 |
+| `s4_t1_housing_scale` | `train` | 1.214 |
+| `s3_t1_housing_scale` | `train` | 1.211 |
 
 Raw data: `reference/benchmark_results.json`
 

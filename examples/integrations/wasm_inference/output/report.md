@@ -1,6 +1,6 @@
 # WASM Inference Benchmark Results
 
-Date: 2026-06-08 09:29:34Z
+Date: 2026-06-15 11:00:14Z
 
 ## Methodology
 
@@ -20,8 +20,8 @@ Date: 2026-06-08 09:29:34Z
 
 ## Timing Ratios (median)
 
-- Train wasm/C++: 2.217
-- Predict wasm/C++: 1.877
+- Train wasm/C++: 2.013
+- Predict wasm/C++: 1.532
 
 ## Correctness
 
