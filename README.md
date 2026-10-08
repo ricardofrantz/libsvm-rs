@@ -107,6 +107,8 @@ sandboxed execution, and model signing are out of scope for this crate. Use
 `LoadOptions::trusted_input()` only for files whose source and size are already
 controlled.
 
+To report a vulnerability, follow [`SECURITY.md`](SECURITY.md).
+
 ## When to Use It
 
 - You are building a Rust service or CLI and want SVM training/prediction
