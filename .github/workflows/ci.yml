@@ -57,8 +57,9 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
       - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4  # v2.9.1
-      - run: cargo build --locked --all-targets --all-features
-      - run: cargo test --locked --all-features
+      # rust-toolchain.toml overrides the toolchain that the action sets as default.
+      - run: cargo +${{ matrix.rust }} build --locked --all-targets --all-features
+      - run: cargo +${{ matrix.rust }} test --locked --all-features
 
   reference:
     name: Reference Comparison
@@ -93,7 +94,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # 1.80.0
         with:
           toolchain: 1.80.0
-      - run: cargo check --locked --all-features
+      # rust-toolchain.toml overrides the toolchain that the action sets as default.
+      - run: cargo +1.80.0 check --locked --all-features
 
   security:
     name: Security audit
