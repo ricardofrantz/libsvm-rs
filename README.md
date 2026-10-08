@@ -45,13 +45,15 @@ Rust was faster in the measured run.
 
 | Operation | Cases | Rust/C median ratio |
 |---|---:|---:|
-| `predict` | 40 | `0.836` |
-| `predict_probability` | 30 | `0.869` |
-| `train` | 40 | `0.931` |
-| `train_probability` | 30 | `1.083` |
+| `predict` | 40 | `0.828` |
+| `predict_probability` | 30 | `0.838` |
+| `train` | 40 | `0.907` |
+| `train_probability` | 30 | `0.979` |
 
-Rust is not uniformly faster than C. Prediction comes out ahead, training is
-roughly even, and probability training is sometimes slower. See
+Measured on 2026-10-09 (Linux, AMD Ryzen 9 9900X, 30 runs per command). Rust is
+faster at the median for every operation, but not in every case: the slowest
+remaining cases are SVR probability training on `housing_scale`, up to
+`1.11` times the C time. See
 [`reference/benchmark_report.md`](reference/benchmark_report.md) and
 [`examples/comparison_summary.json`](examples/comparison_summary.json).
 
