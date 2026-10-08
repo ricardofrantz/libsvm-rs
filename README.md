@@ -45,10 +45,10 @@ Rust was faster in the measured run.
 
 | Operation | Cases | Rust/C median ratio |
 |---|---:|---:|
-| `predict` | 40 | `0.812` |
-| `predict_probability` | 30 | `0.835` |
-| `train` | 40 | `0.938` |
-| `train_probability` | 30 | `1.055` |
+| `predict` | 40 | `0.836` |
+| `predict_probability` | 30 | `0.869` |
+| `train` | 40 | `0.931` |
+| `train_probability` | 30 | `1.083` |
 
 Rust is not uniformly faster than C. Prediction comes out ahead, training is
 roughly even, and probability training is sometimes slower. See
@@ -786,7 +786,7 @@ Float formatting uses `%.17g`-equivalent precision for model files (ensuring rou
 - **Alpha comparison**: `alpha[i].abs() > 0.0` for SV detection (exact zero check, matching C++)
 - **Class label cast**: `labels[i] as i32` matches C's `(int)prob->y[i]` truncation behavior
 - **Float formatting**: `Gfmt` struct produces identical output to C's `printf("%g", x)` for all tested values
-- **Target**: numerical equivalence within ~1e-8 relative tolerance, not bitwise identity
+- **Target**: numerical equivalence, not bitwise identity. The differential suite accepts non-probability outputs within relative `1.5e-5` and absolute `1e-8` of upstream; [`reference/tolerance_policy.md`](reference/tolerance_policy.md) lists every tolerance and warning rule
 - **Known sources of drift**: floating-point accumulation order differences between compilers, shrinking heuristic timing, and gradient reconstruction precision
 
 ## Test Coverage
@@ -794,20 +794,25 @@ Float formatting uses `%.17g`-equivalent precision for model files (ensuring rou
 | Category | Tests | Description |
 |----------|-------|-------------|
 | Cache | 7 | LRU eviction, extend, swap with column updates |
-| Kernel | 8 | All kernel types, struct/standalone agreement, sparse dot product |
+| Kernel | 12 | All kernel types, struct/standalone agreement, sparse dot product |
 | QMatrix | 4 | SvcQ sign/symmetry, OneClassQ, SvrQ double buffer |
-| I/O | 8 | Problem parsing, model roundtrip, C format compatibility |
-| Types | 8 | Parameter validation, nu-SVC feasibility checks |
-| Predict | 3 | Heart_scale accuracy, C svm-predict output comparison |
-| Train | 6 | C-SVC, multiclass, nu-SVC, one-class, epsilon-SVR, nu-SVR |
-| Probability | 6 | Sigmoid fitting, binary/multiclass/regression probability |
-| Cross-validation | 5 | Stratified CV, classification accuracy, regression MSE |
-| Property | 7 | Proptest-based invariant checks (random params/data) |
+| I/O | 48 | Problem parsing, model roundtrip, C format compatibility, `LoadOptions` caps, malformed-header rejection |
+| Types | 14 | Parameter validation, nu-SVC feasibility checks |
+| Builder | 7 | `SvmParameterBuilder` validation and defaults |
+| Predict | 5 | Heart_scale accuracy, C svm-predict output comparison |
+| Train | 8 | C-SVC, multiclass, nu-SVC, one-class, epsilon-SVR, nu-SVR |
+| Probability | 10 | Sigmoid fitting, binary/multiclass/regression probability |
+| Cross-validation | 6 | Stratified CV, classification accuracy, regression MSE |
+| Property | 6 | Proptest-based invariant checks (random params/data) |
 | Metrics | 6 | Regression MSE/R², classification accuracy, edge cases |
-| Util | 10 | group_classes, parse_feature_index, shuffle_range |
-| CLI integration | 21 | Train/predict/scale end-to-end, flag permutation fuzzing |
+| Util | 9 | group_classes, parse_feature_index, shuffle_range |
+| Malicious input | 20 | Hostile problem files, model files, and serde payloads are rejected |
+| Serde | 4 | JSON roundtrip of models; enums keep LIBSVM integer codes |
+| Rayon parity | 1 | Cross-validation output matches one bit-level snapshot with and without `rayon` |
+| CLI integration | 28 | Train/predict/scale end-to-end, flag permutation fuzzing |
+| Doc tests | 8 | Examples in the API docs (1 ignored) |
 | Differential | 250 | Full Rust-vs-C comparison matrix (via external suite) |
-| **Unit/integration** | **~124** | |
+| **Unit/integration/doc** | **202 pass, 1 ignored** | `cargo test --workspace --all-features` |
 
 Coverage metrics: 93.19% line coverage, 92.86% function coverage (library crate).
 
@@ -819,7 +824,7 @@ Coverage metrics: 93.19% line coverage, 92.86% function coverage (library crate)
 
 ## Known Limitations
 
-1. **Not bitwise identical**: Numerical results match within ~1e-8 but are not bit-for-bit identical to C LIBSVM due to floating-point accumulation order differences.
+1. **Not bitwise identical**: In the differential suite, non-probability outputs agree with C LIBSVM within relative `1.5e-5` and absolute `1e-8`, except one documented epsilon-SVR case (`housing_scale_s3_t2_tuned`, relative drift up to `5.7e-5`). Probability outputs have looser tolerances (see `reference/tolerance_policy.md`). Results are not bit-for-bit identical because floating-point accumulation order differs.
 2. **No GPU support**: All computation is CPU-based.
 3. **No incremental/online learning**: Full retraining required for new data (same as upstream LIBSVM).
 4. **Precomputed kernels require full matrix**: The full n×n kernel matrix must be provided in memory.
