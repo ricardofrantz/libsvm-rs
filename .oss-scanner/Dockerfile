@@ -5,7 +5,8 @@
 FROM rust:1-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive
-# g++ and make (already in the rust image) build the C++ LIBSVM reference in vendor/libsvm.
+# g++ and make build the C++ LIBSVM reference in vendor/libsvm. The rust image ships
+# them too; they are listed here so the dependency is explicit.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates git python3 clang g++ make \
     && rm -rf /var/lib/apt/lists/*
