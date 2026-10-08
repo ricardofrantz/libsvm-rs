@@ -208,13 +208,18 @@ impl<'a> QMatrix for SvrQ<'a> {
             }
         }
 
-        // Reorder and apply signs into the output buffer
+        // Reorder and apply signs into the output buffer.
+        // Slice buf/sign/index to `len` so the compiler drops the
+        // per-element bounds checks; `data` is an l-length cache row and
+        // `index[j] < l` is a data-dependent lookup that stays checked.
         let buf_idx = self.next_buffer;
         self.next_buffer = 1 - self.next_buffer;
         let si = self.sign[i] as f32;
-        let buf = &mut self.buffer[buf_idx];
+        let buf = &mut self.buffer[buf_idx][..len];
+        let sign = &self.sign[..len];
+        let index = &self.index[..len];
         for j in 0..len {
-            buf[j] = si * (self.sign[j] as f32) * data[self.index[j]];
+            buf[j] = si * (sign[j] as f32) * data[index[j]];
         }
         &self.buffer[buf_idx][..len]
     }

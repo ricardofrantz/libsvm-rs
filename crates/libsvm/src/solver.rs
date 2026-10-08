@@ -333,14 +333,17 @@ impl<'a> Solver<'a> {
         let mut obj_diff_min = INF;
 
         // First pass: find i (maximizes -y_i * grad(f)_i in I_up)
-        for t in 0..self.active_size {
-            if self.y[t] == 1 {
-                if !self.is_upper_bound(t) && -self.g[t] >= gmax {
-                    gmax = -self.g[t];
+        // Slice to active_size so the compiler can drop per-index bounds checks.
+        let n = self.active_size;
+        let (y, g, status) = (&self.y[..n], &self.g[..n], &self.alpha_status[..n]);
+        for t in 0..n {
+            if y[t] == 1 {
+                if status[t] != AlphaStatus::UpperBound && -g[t] >= gmax {
+                    gmax = -g[t];
                     gmax_idx = Some(t);
                 }
-            } else if !self.is_lower_bound(t) && self.g[t] >= gmax {
-                gmax = self.g[t];
+            } else if status[t] != AlphaStatus::LowerBound && g[t] >= gmax {
+                gmax = g[t];
                 gmax_idx = Some(t);
             }
         }
@@ -349,16 +352,18 @@ impl<'a> Solver<'a> {
         let q_i = self.q.get_q(i, self.active_size).to_vec();
 
         // Second pass: find j (minimizes objective decrease)
-        for j in 0..self.active_size {
-            if self.y[j] == 1 {
-                if !self.is_lower_bound(j) {
-                    let grad_diff = gmax + self.g[j];
-                    if self.g[j] >= gmax2 {
-                        gmax2 = self.g[j];
+        // Reuse `y`/`g`/`status` sliced to `n`; index values are < n.
+        let qd_i = self.qd[i];
+        let yi = y[i] as f64;
+        for j in 0..n {
+            if y[j] == 1 {
+                if status[j] != AlphaStatus::LowerBound {
+                    let grad_diff = gmax + g[j];
+                    if g[j] >= gmax2 {
+                        gmax2 = g[j];
                     }
                     if grad_diff > 0.0 {
-                        let quad_coef =
-                            self.qd[i] + self.qd[j] - 2.0 * (self.y[i] as f64) * q_i[j] as f64;
+                        let quad_coef = qd_i + self.qd[j] - 2.0 * yi * q_i[j] as f64;
                         let obj_diff = if quad_coef > 0.0 {
                             -(grad_diff * grad_diff) / quad_coef
                         } else {
@@ -370,14 +375,13 @@ impl<'a> Solver<'a> {
                         }
                     }
                 }
-            } else if !self.is_upper_bound(j) {
-                let grad_diff = gmax - self.g[j];
-                if -self.g[j] >= gmax2 {
-                    gmax2 = -self.g[j];
+            } else if status[j] != AlphaStatus::UpperBound {
+                let grad_diff = gmax - g[j];
+                if -g[j] >= gmax2 {
+                    gmax2 = -g[j];
                 }
                 if grad_diff > 0.0 {
-                    let quad_coef =
-                        self.qd[i] + self.qd[j] + 2.0 * (self.y[i] as f64) * q_i[j] as f64;
+                    let quad_coef = qd_i + self.qd[j] + 2.0 * yi * q_i[j] as f64;
                     let obj_diff = if quad_coef > 0.0 {
                         -(grad_diff * grad_diff) / quad_coef
                     } else {
@@ -408,14 +412,17 @@ impl<'a> Solver<'a> {
         let mut gmin_idx: Option<usize> = None;
         let mut obj_diff_min = INF;
 
-        for t in 0..self.active_size {
-            if self.y[t] == 1 {
-                if !self.is_upper_bound(t) && -self.g[t] >= gmaxp {
-                    gmaxp = -self.g[t];
+        // Slice to active_size so index-based loops drop bounds checks.
+        let n = self.active_size;
+        let (y, g, status) = (&self.y[..n], &self.g[..n], &self.alpha_status[..n]);
+        for t in 0..n {
+            if y[t] == 1 {
+                if status[t] != AlphaStatus::UpperBound && -g[t] >= gmaxp {
+                    gmaxp = -g[t];
                     gmaxp_idx = Some(t);
                 }
-            } else if !self.is_lower_bound(t) && self.g[t] >= gmaxn {
-                gmaxn = self.g[t];
+            } else if status[t] != AlphaStatus::LowerBound && g[t] >= gmaxn {
+                gmaxn = g[t];
                 gmaxn_idx = Some(t);
             }
         }
@@ -434,15 +441,15 @@ impl<'a> Solver<'a> {
             None
         };
 
-        for j in 0..self.active_size {
-            if self.y[j] == 1 {
-                if !self.is_lower_bound(j) {
-                    let grad_diff = gmaxp + self.g[j];
-                    if self.g[j] >= gmaxp2 {
-                        gmaxp2 = self.g[j];
+        for j in 0..n {
+            if y[j] == 1 {
+                if status[j] != AlphaStatus::LowerBound {
+                    let grad_diff = gmaxp + g[j];
+                    if g[j] >= gmaxp2 {
+                        gmaxp2 = g[j];
                     }
                     if grad_diff > 0.0 {
-                        if let (Some(ip), Some(ref q_ip)) = (ip, &q_ip) {
+                        if let (Some(ip), Some(q_ip)) = (ip, q_ip.as_ref()) {
                             let quad_coef = self.qd[ip] + self.qd[j] - 2.0 * q_ip[j] as f64;
                             let obj_diff = if quad_coef > 0.0 {
                                 -(grad_diff * grad_diff) / quad_coef
@@ -456,13 +463,13 @@ impl<'a> Solver<'a> {
                         }
                     }
                 }
-            } else if !self.is_upper_bound(j) {
-                let grad_diff = gmaxn - self.g[j];
-                if -self.g[j] >= gmaxn2 {
-                    gmaxn2 = -self.g[j];
+            } else if status[j] != AlphaStatus::UpperBound {
+                let grad_diff = gmaxn - g[j];
+                if -g[j] >= gmaxn2 {
+                    gmaxn2 = -g[j];
                 }
                 if grad_diff > 0.0 {
-                    if let (Some(in_), Some(ref q_in)) = (in_, &q_in) {
+                    if let (Some(in_), Some(q_in)) = (in_, q_in.as_ref()) {
                         let quad_coef = self.qd[in_] + self.qd[j] - 2.0 * q_in[j] as f64;
                         let obj_diff = if quad_coef > 0.0 {
                             -(grad_diff * grad_diff) / quad_coef
@@ -567,8 +574,10 @@ impl<'a> Solver<'a> {
         let delta_alpha_i = self.alpha[i] - old_alpha_i;
         let delta_alpha_j = self.alpha[j] - old_alpha_j;
 
+        // Update gradient G (sliced so `k < active_size` proves in-bounds)
+        let g = &mut self.g[..active_size];
         for k in 0..active_size {
-            self.g[k] += q_i[k] as f64 * delta_alpha_i + q_j[k] as f64 * delta_alpha_j;
+            g[k] += q_i[k] as f64 * delta_alpha_i + q_j[k] as f64 * delta_alpha_j;
         }
 
         // Update alpha_status and G_bar
