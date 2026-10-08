@@ -51,11 +51,11 @@ failures are panics, unbounded memory or CPU use, and silent wrong results.
   CPU use far larger than the input size allows (more than about 10x the default
   `max_bytes`) under the default options; differences from the C++ reference on
   valid input that change predictions.
-- Low: the same problems only with `LoadOptions::unlimited()` or other limits the
+- Low: the same problems only with `LoadOptions::trusted_input()` or other limits the
   caller raised on purpose; misleading error messages.
 
 ## Anything to leave alone
 - Slow training on large but valid data is expected (it is an SVM solver), not DoS.
 - Floating-point differences in the last bits against C++ LIBSVM, when the predicted
   labels match.
-- Out-of-memory when the caller chose `LoadOptions::unlimited()`.
+- Out-of-memory when the caller chose `LoadOptions::trusted_input()`.
