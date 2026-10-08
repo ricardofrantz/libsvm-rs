@@ -465,7 +465,7 @@ solver, the design decisions, and the notes on numerical equivalence.
 | Differential | 250 | Full Rust-vs-C comparison matrix (via external suite) |
 | **Unit/integration/doc** | **202 pass, 1 ignored** | `cargo test --workspace --all-features` |
 
-Coverage metrics: 93.19% line coverage, 92.86% function coverage (library crate).
+Coverage metrics: 93.24% line coverage, 94.35% function coverage (library crate), from [`reference/coverage_report.md`](reference/coverage_report.md).
 
 ## Dependencies
 
