@@ -75,11 +75,61 @@ fn bench_train_with_probability(c: &mut Criterion) {
     });
 }
 
+fn load_housing_scale() -> libsvm_rs::SvmProblem {
+    let path = Path::new(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../data/housing_scale"
+    ));
+    load_problem(path).expect("failed to load housing_scale dataset")
+}
+
+fn bench_svr(c: &mut Criterion, name: &str, svm_type: SvmType, kernel_type: KernelType) {
+    let problem = load_housing_scale();
+    let param = SvmParameter {
+        svm_type,
+        kernel_type,
+        ..Default::default()
+    };
+
+    c.bench_function(name, |b| {
+        b.iter(|| svm_train(black_box(&problem), black_box(&param)))
+    });
+}
+
+fn bench_svr_epsilon_linear(c: &mut Criterion) {
+    libsvm_rs::set_quiet(true);
+    bench_svr(
+        c,
+        "svr_epsilon_linear",
+        SvmType::EpsilonSvr,
+        KernelType::Linear,
+    );
+}
+
+fn bench_svr_epsilon_rbf(c: &mut Criterion) {
+    libsvm_rs::set_quiet(true);
+    bench_svr(c, "svr_epsilon_rbf", SvmType::EpsilonSvr, KernelType::Rbf);
+}
+
+fn bench_svr_nu_linear(c: &mut Criterion) {
+    libsvm_rs::set_quiet(true);
+    bench_svr(c, "svr_nu_linear", SvmType::NuSvr, KernelType::Linear);
+}
+
+fn bench_svr_nu_rbf(c: &mut Criterion) {
+    libsvm_rs::set_quiet(true);
+    bench_svr(c, "svr_nu_rbf", SvmType::NuSvr, KernelType::Rbf);
+}
+
 criterion_group!(
     benches,
     bench_train_rbf,
     bench_train_linear,
     bench_predict,
-    bench_train_with_probability
+    bench_train_with_probability,
+    bench_svr_epsilon_linear,
+    bench_svr_epsilon_rbf,
+    bench_svr_nu_linear,
+    bench_svr_nu_rbf
 );
 criterion_main!(benches);
