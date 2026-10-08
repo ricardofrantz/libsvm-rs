@@ -2,10 +2,10 @@
 
 Date: 2026-06-11 · Scope: serde deserialization surface, rayon parallel paths,
 parameter-builder validation, glibc-rand LCG replication, regression check of the
-2026-06-02 findings, supply chain and CI gates · Method: 4 parallel read-only
-reviewer lanes + coordinator reproduction. Findings marked **[Verified]** were
-reproduced or code-confirmed by the coordinator; **[Reviewer]** are
-reviewer-reported and code-plausible but not separately reproduced.
+2026-06-02 findings, supply chain and CI gates · Method: code review of each
+surface, with reproduction where possible. Findings marked **[Verified]** were
+reproduced or confirmed in the code; **[Reviewed]** findings come from code
+reading only and were not reproduced.
 
 Commit audited: `0c81b93` (main). One fix from this audit (S1) lands in the
 same cycle, with a regression test.
@@ -26,8 +26,8 @@ No High findings. The new surfaces added since the 2026-06-02 audit are sound:
   (`split_at_mut` gives exclusive fold slices), PRNG (`c_rand`) is consumed
   serially *before* any parallel region, the probability path is explicitly
   serial, and bitwise parity with the serial path is pinned by digest tests
-  run by CI under three feature configurations. A reviewer claim of "silent
-  zero-padded CV results on fold panic" was **refuted** by the coordinator: a
+  run by CI under three feature configurations. A suspected issue, "silent
+  zero-padded CV results on fold panic", was **ruled out**: a
   panic inside the parallel region unwinds out of the call; the local result
   buffer is dropped and the caller never observes partial output.
 - **Builder**: `SvmParameterBuilder::build()` delegates to
@@ -68,7 +68,7 @@ their current locations.
   before use. Disposition: accepted; documented here. Tightening would
   require a hand-written `Deserialize` for marginal benefit.
 
-### S3 — Low — Non-finite floats rely on the serde format's strictness · [Reviewer]
+### S3 — Low — Non-finite floats rely on the serde format's strictness · [Reviewed]
 - **Where:** serde path generally; `validate_model` finiteness checks.
 - **What:** serde_json rejects NaN/Inf at the parser, and `validate_model`
   independently rejects non-finite gamma/coef0/rho/sv_coef/feature values —
@@ -88,7 +88,7 @@ their current locations.
 - **Where:** `crates/libsvm/src/cross_validation.rs` (parallel `for_each`),
   `crates/libsvm/src/probability.rs` (parallel `map/collect`).
 - **What:** a panic inside a fold training unwinds through rayon to the
-  caller. No corruption or partial results (coordinator-verified: result
+  caller. No corruption or partial results (verified: result
   buffers are locals dropped during unwind), and fold training on validated
   input has no known panic sites. Matches serial behavior; no change.
 
