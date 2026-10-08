@@ -5,8 +5,9 @@
 FROM rust:1-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive
+# g++ and make (already in the rust image) build the C++ LIBSVM reference in vendor/libsvm.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates git python3 clang \
+      ca-certificates git python3 clang g++ make \
     && rm -rf /var/lib/apt/lists/*
 
 # Number of parallel compile jobs. The scanner's build machine has 16 CPUs.
@@ -28,6 +29,10 @@ RUN NIGHTLY="$(sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain-fuzz.toml)" \
     && cargo +"$NIGHTLY" install cargo-fuzz --locked \
     && cd crates/libsvm \
     && cargo +"$NIGHTLY" fuzz build
+
+# The C++ reference tools (svm-train, svm-predict, svm-scale). The comparison test in
+# crates/libsvm/src/predict.rs returns early when vendor/libsvm/svm-predict is missing.
+RUN make -C vendor/libsvm
 
 # Run the tests once so a broken image is visible in the build log. A failure does not stop the build.
 RUN cargo test --locked --workspace --all-features || echo "WARNING: cargo test reported failures"

@@ -34,6 +34,9 @@ Training parameters set in code by the caller are trusted. A bad parameter that
   `parse_problem`). Seed corpora are in `crates/libsvm/fuzz/corpus/`.
 - CLI: `target/debug/svm-predict-rs <test_file> <model_file> <output>`. Sample data
   and models are in `data/` (for example `data/heart_scale`, `data/heart_scale.model`).
+- The C++ reference tools are built in the image at `vendor/libsvm/svm-train`,
+  `svm-predict` and `svm-scale`. Use them to check whether libsvm-rs accepts or predicts
+  differently from LIBSVM on the same file.
 - `SECURITY_AUDIT.md` lists earlier findings and fixes. Please do not re-report those
   unless the fix is incomplete.
 
