@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use libsvm_rs::io::{format_17g, format_g, load_model, load_problem};
 use libsvm_rs::predict::{predict, predict_probability};
 use libsvm_rs::{regression_metrics, svm_check_probability_model, SvmType};

@@ -79,6 +79,7 @@
 //!   validation as the text model loader; LIBSVM text model files remain the
 //!   C-compatible interchange format.
 
+#![forbid(unsafe_code)]
 #![deny(missing_docs)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(

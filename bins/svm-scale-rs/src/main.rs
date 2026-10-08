@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use libsvm_rs::io::{format_17g, format_g};
 use libsvm_rs::util::MAX_FEATURE_INDEX;
 use std::fs::File;

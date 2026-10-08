@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use libsvm_rs::cross_validation::svm_cross_validation;
 use libsvm_rs::io::{format_g, load_problem, save_model};
 use libsvm_rs::train::svm_train;
