@@ -23,3 +23,7 @@ clap = { version = "4", features = ["derive"] }
 float-cmp = "0.10"
 criterion = { version = "0.8", features = ["html_reports"] }
 proptest = "1"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
