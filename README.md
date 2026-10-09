@@ -50,7 +50,7 @@ Rust was faster in the measured run.
 | `train` | 40 | `0.907` |
 | `train_probability` | 30 | `0.979` |
 
-Measured on 2026-10-09 (Linux, AMD Ryzen 9 9900X, 30 runs per command). Rust is
+Measured on 2026-10-08 (UTC; Linux, AMD Ryzen 9 9900X, 30 runs per command). Rust is
 faster at the median for every operation, but not in every case: the slowest
 remaining cases are SVR probability training on `housing_scale`, up to
 `1.11` times the C time. See
@@ -359,7 +359,7 @@ DIFF_NONPROB_REL_TOL=2e-5 DIFF_SCOPE=full python3 scripts/run_differential_suite
 bash scripts/check_coverage_thresholds.sh
 
 # 5. Run Rust-vs-C performance benchmarks
-BENCH_WARMUP=3 BENCH_RUNS=20 python3 scripts/benchmark_compare.py
+BENCH_WARMUP=3 BENCH_RUNS=30 python3 scripts/benchmark_compare.py
 ```
 
 ### Understanding Differential Results
@@ -422,7 +422,7 @@ Statistical summary companion:
 To regenerate performance data with stronger statistical confidence before plotting:
 
 ```bash
-BENCH_WARMUP=3 BENCH_RUNS=20 python3 scripts/benchmark_compare.py
+BENCH_WARMUP=3 BENCH_RUNS=30 python3 scripts/benchmark_compare.py
 python3 examples/common/make_comparison_figure.py --root . --out examples/comparison.png --summary examples/comparison_summary.json
 ```
 
