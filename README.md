@@ -517,3 +517,15 @@ attribution.
 - Platt, J.C. (2000). Probabilities for SV machines. In *Advances in Large Margin Classifiers*, MIT Press.
 - Lin, H.-T., Lin, C.-J., and Weng, R.C. (2007). A note on Platt's probabilistic outputs for support vector machines. *Machine Learning*, 68(3):267–276.
 - Fan, R.-E., Chen, P.-H., and Lin, C.-J. (2005). Working set selection using second order information for training support vector machines. *JMLR*, 6:1889–1918.
+
+## Disclaimer
+
+This software is provided "as is", without warranty of any kind. To the extent
+permitted by law, the authors and contributors are not liable for any damage, loss
+or claim arising from its use or misuse. You are responsible for how you use it and
+for following the laws and rules that apply to you. The full terms are in
+[LICENSE](LICENSE).
+
+This is research software. It has not been validated for engineering design,
+certification or safety-critical use. Check its results independently before you
+rely on them.
