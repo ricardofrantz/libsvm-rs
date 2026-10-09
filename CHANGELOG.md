@@ -5,6 +5,71 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.9.1] - 2026-10-09
+
+### Added
+
+- `crates/libsvm/LICENSE` and `crates/libsvm/NOTICE` went into the published
+  crate. The `libsvm-rs` package on crates.io now carries the BSD-3-Clause
+  license and the LIBSVM copyright notice. Releases up to 0.9.0 carried them
+  only in the GitHub repository.
+- `README.md` gained a Disclaimer section. It states that the software comes
+  "as is", without warranty, and that it is not validated for engineering
+  design, certification, or safety-critical use.
+- `SECURITY.md` named the supported release and the GitHub private
+  vulnerability-reporting link. GitHub issues are disabled for this repository.
+- `crates/libsvm/benches/svm_bench.rs` gained four in-process SVR training
+  benchmarks on `housing_scale`: `svr_epsilon_linear`, `svr_epsilon_rbf`,
+  `svr_nu_linear`, and `svr_nu_rbf`.
+
+### Changed
+
+- `Solver` working-set selection, the gradient update, and `SvrQ::get_q` now
+  index slices cut to the active length, so the compiler drops the per-element
+  bounds checks. Arithmetic, operation order, and iteration order did not
+  change: 74 model files from the benchmark configurations stayed
+  byte-identical, and the 250-case differential suite gave identical results
+  for every case. On `housing_scale`, SVR training fell from 1.37–1.59 to
+  1.13–1.14 times the C instruction count (callgrind, without LTO). On one
+  machine (Ryzen 9 9900X), the CLI `train_probability` median Rust/C time ratio
+  went from 1.007 to 0.979, and the worst case from 1.29 to 1.11.
+- `[profile.release]` in the workspace `Cargo.toml` now sets `lto = "fat"` and
+  `codegen-units = 1`. It applies to the CLI binaries and benchmarks built from
+  this repository. Crates that depend on `libsvm-rs` keep their own profile. On
+  top of the solver change, it removed 1.4–2.2 % more SVR training instructions
+  on `housing_scale`.
+- The library and the three CLI crates now declare `#![forbid(unsafe_code)]`.
+  The code had no `unsafe` before; the compiler now rejects any.
+
+### Fixed
+
+- The `MSRV (1.80.0)` CI job and the beta build column ran Rust 1.93.1, because
+  `rust-toolchain.toml` overrode the toolchain that the job installed. They now
+  call `cargo +1.80.0` and `cargo +beta`, and Rust 1.80.0 builds the workspace.
+- The `predict.rs` test that compares Rust predictions with C `svm-predict`
+  returned early in CI, because CI never built the C tools. The Test and Code
+  coverage jobs now build them first. Library line coverage in CI now reads
+  93.24 % (was 92.73 %).
+
+### Security
+
+- `Cargo.lock` now pins `crossbeam-epoch` 0.9.21 (was 0.9.18) for
+  RUSTSEC-2026-0204, an invalid pointer dereference in `fmt::Pointer`. The
+  crate comes in through the optional `rayon` feature. Projects that depend on
+  `libsvm-rs` resolve their own lockfile; `cargo update -p crossbeam-epoch`
+  moves them to the fixed version.
+- `Cargo.lock` now pins `anyhow` 1.0.104 (was 1.0.102) for RUSTSEC-2026-0190.
+  `anyhow` is a development dependency only.
+
+### Documentation
+
+- README numbers now match the committed reports: test count 202 (was "~124"),
+  the performance table, coverage, and the parity tolerance (relative `1.5e-5`
+  and absolute `1e-8`, instead of "~1e-8"). The README now states that the
+  differential counts depend on the platform: 237/3/0/10 on macOS and
+  240/0/0/10 on Linux for the same code.
+- Implementation internals moved from the README to `docs/ARCHITECTURE.md`.
+
 ## [0.9.0] - 2026-06-11
 
 ### Added
@@ -246,6 +311,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Parameter validation with ν-SVC feasibility check
 - 38 tests
 
+[0.9.1]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/ricardofrantz/libsvm-rs/compare/v0.7.0...v0.8.0
