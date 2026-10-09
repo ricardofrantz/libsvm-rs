@@ -74,6 +74,14 @@ failures. Differential baselines are recorded in the reference artifacts; libc
 [`reference/differential_report.md`](reference/differential_report.md) and
 [`reference/tolerance_policy.md`](reference/tolerance_policy.md).
 
+The differential counts depend on the platform. The suite regenerates its
+synthetic datasets and builds upstream LIBSVM with the local compiler. The
+committed `reference/differential_report.md` was made on macOS (Apple clang 21,
+see `reference/reference_provenance.json`). On Linux (gcc 13) the same code gives
+240 pass, 0 warn, 0 fail, 10 skip. To check that a change keeps parity, run the
+full suite on the unchanged and on the changed code on the same machine, and
+compare the two `reference/differential_results.json` files case by case.
+
 ## Security Considerations
 
 `libsvm-rs` treats `.libsvm` problem files and `.model` files as untrusted text
@@ -371,8 +379,8 @@ BENCH_WARMUP=3 BENCH_RUNS=30 python3 scripts/benchmark_compare.py
 | `fail`  | Deterministic parity break — label mismatch or model divergence outside thresholds |
 | `skip`  | Configuration not executed (usually because training fails in both implementations) |
 
-Current full-scope status in `reference/differential_report.md` (250 configs):
-237 pass, 3 warn, 0 fail, 10 skip.
+Current full-scope status in `reference/differential_report.md` (250 configs,
+macOS reference run): 237 pass, 3 warn, 0 fail, 10 skip.
 
 The 3 warnings are:
 1. `housing_scale_s3_t2_tuned` — epsilon-SVR near-parity training drift (bounded, cross-predict verified)
@@ -477,7 +485,7 @@ Coverage metrics: 93.24% line coverage, 94.35% function coverage (library crate)
 
 ## Known Limitations
 
-1. **Not bitwise identical**: In the differential suite, non-probability outputs agree with C LIBSVM within relative `1.5e-5` and absolute `1e-8`, except one documented epsilon-SVR case (`housing_scale_s3_t2_tuned`, relative drift up to `5.7e-5`). Probability outputs have looser tolerances (see `reference/tolerance_policy.md`). Results are not bit-for-bit identical because floating-point accumulation order differs.
+1. **Not bitwise identical**: In the differential suite, non-probability outputs agree with C LIBSVM within relative `1.5e-5` and absolute `1e-8`, except one documented epsilon-SVR case in the macOS reference run (`housing_scale_s3_t2_tuned`, relative drift up to `5.7e-5`). Probability outputs have looser tolerances (see `reference/tolerance_policy.md`). Results are not bit-for-bit identical because floating-point accumulation order differs.
 2. **No GPU support**: All computation is CPU-based.
 3. **No incremental/online learning**: Full retraining required for new data (same as upstream LIBSVM).
 4. **Precomputed kernels require full matrix**: The full n×n kernel matrix must be provided in memory.
@@ -487,7 +495,7 @@ Coverage metrics: 93.24% line coverage, 94.35% function coverage (library crate)
 1. Fork the repository
 2. Create a feature branch
 3. Run the test suite: `cargo test --workspace`
-4. Run the differential suite to verify parity: `python3 scripts/run_differential_suite.py`
+4. Run the full differential suite (`DIFF_SCOPE=full python3 scripts/run_differential_suite.py`) on the unchanged and on the changed code on the same machine, and confirm the results match
 5. Submit a pull request
 
 ## License
